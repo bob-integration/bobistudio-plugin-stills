@@ -1,0 +1,38 @@
+<div class="stl-ctl">
+  <div class="stl-project-banner" style="display:none;padding:4px 10px;font-size:0.82em;background:var(--bg-elev);border-bottom:1px solid var(--border);color:var(--text-muted)">
+    Stockage : <strong class="stl-project-name"></strong>
+  </div>
+  <div class="stl-noproject-banner" style="display:none;padding:4px 10px;font-size:0.82em;background:var(--bg-elev);border-bottom:1px solid var(--border);color:var(--text-muted)">
+    Stockage : tous les projets (aucun projet assigné)
+  </div>
+  <div class="stl-row">
+    <label>Dossier
+      <select class="stl-folder"><option value="">— chargement… —</option></select>
+    </label>
+    <button class="stl-refresh" title="Rafraîchir la liste">↻</button>
+  </div>
+
+  <div class="stl-grid" aria-label="Vignettes"></div>
+
+  <div class="stl-row stl-fit">
+    <span class="stl-lbl">Cadrage :</span>
+    <label><input type="radio" name="stl-fit" value="native" checked> Pixel à pixel</label>
+    <label><input type="radio" name="stl-fit" value="fit"> Au plus grand</label>
+    <label><input type="radio" name="stl-fit" value="stretch"> Plein cadre</label>
+  </div>
+
+  <div class="stl-adv-row">
+    <button type="button" class="stl-adv-toggle" aria-expanded="false">Position &amp; taille</button>
+  </div>
+  <div class="stl-adv" hidden>
+    <label>X (% du cadre)<input type="number" class="stl-x" value="0" step="1"></label>
+    <label>Y (% du cadre)<input type="number" class="stl-y" value="0" step="1"></label>
+    <label>Taille (%)<input type="number" class="stl-size" value="100" step="1" min="1"></label>
+  </div>
+
+  <div class="stl-row">
+    <button class="stl-apply">Appliquer</button>
+    <button class="stl-monitor">Monitoring</button>
+  </div>
+  <div class="stl-status">…</div>
+</div>

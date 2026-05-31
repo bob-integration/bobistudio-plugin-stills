@@ -1,0 +1,8 @@
+{
+  "published_at": "2026-05-30",
+  "changes": [
+    "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL : sortie Fill + sortie Key (alpha)."
+  ],
+  "fixes": [],
+  "known_bugs": []
+}
