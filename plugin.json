@@ -1,6 +1,7 @@
 {
   "type": "stills",
   "label": "Images fixes",
+  "badge": { "label": "Stills", "class": "mode-media" },
   "version": "0.2.0",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL : sortie Fill + sortie Key (alpha).",
   "nav": { "section": "medias", "label": "Medias", "route": "/medias", "order": 15 },
