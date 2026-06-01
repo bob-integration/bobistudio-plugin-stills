@@ -1,24 +1,58 @@
 {
   "type": "stills",
   "label": "Images fixes",
-  "badge": { "label": "Stills", "class": "mode-media" },
-  "version": "0.2.0",
+  "badge": {
+    "label": "Stills",
+    "class": "mode-media"
+  },
+  "version": "0.2.1",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL : sortie Fill + sortie Key (alpha).",
-  "nav": { "section": "medias", "label": "Medias", "route": "/medias", "order": 15 },
+  "nav": {
+    "section": "medias",
+    "label": "Medias",
+    "route": "/medias",
+    "order": 15
+  },
   "script_template": "script.py",
-  "ui": { "control_html": "control.html", "control_js": "control.js", "control_css": "control.css" },
+  "ui": {
+    "control_html": "control.html",
+    "control_js": "control.js",
+    "control_css": "control.css"
+  },
   "deploy_defaults": {
-    "folder": "", "file": "", "fit": "native", "x": 0, "y": 0, "size": 100,
-    "width": 1280, "height": 720, "fps": 25, "media_root": "/mnt/media"
+    "folder": "",
+    "file": "",
+    "fit": "native",
+    "x": 0,
+    "y": 0,
+    "size": 100,
+    "width": 1280,
+    "height": 720,
+    "fps": 25,
+    "media_root": "/mnt/media"
   },
   "media_volume": true,
   "wiring": {
     "produces": [
-      { "essence": "video", "shm": "{hostname}" },
-      { "essence": "video", "shm": "{hostname}_key" }
+      {
+        "essence": "video",
+        "shm": "{hostname}"
+      },
+      {
+        "essence": "video",
+        "shm": "{hostname}_key"
+      }
     ],
     "consumes": [],
     "mode": "redeploy"
   },
-  "control": { "endpoints": ["/state", "/folders", "/images", "/thumb", "/select"] }
+  "control": {
+    "endpoints": [
+      "/state",
+      "/folders",
+      "/images",
+      "/thumb",
+      "/select"
+    ]
+  }
 }
