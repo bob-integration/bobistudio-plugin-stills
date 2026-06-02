@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 BOBI SAS, France
+// Auteur : Cyril Mazouer, pour le compte de BOBI SAS
+// Distribué sous licence GNU GPL v3 (ou ultérieure) ; voir le fichier LICENSE.
+
 // Stills control fragment. Registered on window.MXLPlugins["stills"].
 // mount(el, vmid, ctx) appelé par le shell Medias après injection de control.html.
 window.MXLPlugins = window.MXLPlugins || {};

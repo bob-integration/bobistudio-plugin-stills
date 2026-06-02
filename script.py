@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 BOBI SAS, France
+# Auteur : Cyril Mazouer, pour le compte de BOBI SAS
+# Distribué sous licence GNU GPL v3 (ou ultérieure) ; voir le fichier LICENSE.
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Stills plugin — affiche une IMAGE FIXE (avec transparence éventuelle) et PRODUIT
 # deux shm vidéo YUV420p au format ring MXL :
@@ -24,15 +29,25 @@ FPS    = int(round(float(CONFIG.get("fps") or 25))) or 25
 
 # ─── format shm (identique au pipeline MXL : cf. plugins/player) ─────────────
 CHROMA = str(CONFIG.get("chroma") or "422")
+# Profondeur shm 8/10/12 bits. Quantification paramétrée (_SCALE/_MAXV/_NP_DT) : en 8 bits
+# _SCALE=1, dtype uint8 → sortie byte-identique.
+BIT_DEPTH = int(CONFIG.get("bit_depth") or 8)
+_DEEP  = BIT_DEPTH >= 10
+_BPS   = 2 if _DEEP else 1
+_NP_DT = np.uint16 if _DEEP else np.uint8
+_SCALE = 1 << (BIT_DEPTH - 8)
+_MAXV  = (1 << BIT_DEPTH) - 1
+_NEUTRAL = 1 << (BIT_DEPTH - 1)
 _CW = {{"420": 2, "422": 2, "444": 1}}.get(CHROMA, 2)   # diviseur largeur chroma
 _CH = {{"420": 2, "422": 1, "444": 1}}.get(CHROMA, 1)   # diviseur hauteur chroma
-PIX_FMT = {{"420": "yuv420p", "422": "yuv422p", "444": "yuv444p"}}.get(CHROMA, "yuv422p")
+PIX_FMT = ({{"420": "yuv420p", "422": "yuv422p", "444": "yuv444p"}}.get(CHROMA, "yuv422p")
+           + (("12le" if BIT_DEPTH >= 12 else "10le") if _DEEP else ""))
 UV_W = WIDTH // _CW
 UV_H = HEIGHT // _CH
 V_HEADER_SIZE = 64
 V_RING_SIZE   = CONFIG.get("shm_video_ring", 10)
-Y_SIZE        = WIDTH * HEIGHT
-UV_SIZE       = UV_W * UV_H
+Y_SIZE        = WIDTH * HEIGHT * _BPS
+UV_SIZE       = UV_W * UV_H * _BPS
 V_FRAME_SIZE  = Y_SIZE + 2 * UV_SIZE
 V_TOTAL_SIZE  = V_HEADER_SIZE + V_RING_SIZE * V_FRAME_SIZE
 
@@ -57,10 +72,13 @@ state = {{
     "size":   float(CONFIG.get("size") or 100), # échelle %
 }}
 
+_BLACK_B = (16 << (BIT_DEPTH - 8)).to_bytes(_BPS, "little")   # Y noir studio (16/64/256)
+_KEY0_B  = (0).to_bytes(_BPS, "little")                        # Y matte transparent (0)
+_NEUT_B  = _NEUTRAL.to_bytes(_BPS, "little")                   # U/V neutre (128/512/2048)
 def _black_fill():
-    return (b"\x10" * (WIDTH * HEIGHT)) + (b"\x80" * (2 * UV_W * UV_H))
+    return (_BLACK_B * (WIDTH * HEIGHT)) + (_NEUT_B * (2 * UV_W * UV_H))
 def _black_key():
-    return (b"\x00" * (WIDTH * HEIGHT)) + (b"\x80" * (2 * UV_W * UV_H))
+    return (_KEY0_B * (WIDTH * HEIGHT)) + (_NEUT_B * (2 * UV_W * UV_H))
 
 frames_lock = threading.Lock()
 frames = {{"fill": _black_fill(), "key": _black_key()}}
@@ -111,15 +129,16 @@ def _rgb_to_yuv420(rgb):
     y = ( 0.257 * r + 0.504 * g + 0.098 * b + 16.0)
     u = (-0.148 * r - 0.291 * g + 0.439 * b + 128.0)
     v = ( 0.439 * r - 0.368 * g - 0.071 * b + 128.0)
-    y_u8 = np.clip(y, 0, 255).astype(np.uint8)
-    u_u8 = np.clip(u[::_CH, ::_CW], 0, 255).astype(np.uint8)
-    v_u8 = np.clip(v[::_CH, ::_CW], 0, 255).astype(np.uint8)
+    y_u8 = np.clip(y * _SCALE, 0, _MAXV).astype(_NP_DT)
+    u_u8 = np.clip(u[::_CH, ::_CW] * _SCALE, 0, _MAXV).astype(_NP_DT)
+    v_u8 = np.clip(v[::_CH, ::_CW] * _SCALE, 0, _MAXV).astype(_NP_DT)
     return y_u8.tobytes() + u_u8.tobytes() + v_u8.tobytes()
 
 def _alpha_to_yuv420(alpha):
-    """alpha uint8 (H,W) → key YUV420p : Y=alpha (matte), U=V=128 (neutre)."""
-    y = np.ascontiguousarray(alpha, dtype=np.uint8)
-    uv = np.full((UV_H, UV_W), 128, dtype=np.uint8)
+    """alpha uint8 (H,W) → key : Y=alpha (matte, mis à l'échelle N bits), U=V=neutre."""
+    y = (np.asarray(alpha, dtype=np.uint16) * _SCALE).clip(0, _MAXV).astype(_NP_DT) if _DEEP \
+        else np.ascontiguousarray(alpha, dtype=np.uint8)
+    uv = np.full((UV_H, UV_W), _NEUTRAL, dtype=_NP_DT)
     return y.tobytes() + uv.tobytes() + uv.tobytes()
 
 
