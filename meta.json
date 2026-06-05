@@ -1,8 +1,11 @@
 {
-  "version": "0.3.0",
+  "version": "0.3.1",
   "date": "2026-06-05",
   "changes": {
-    "Nouveautés": [
+    "Corrections": [
+      "Montage du volume média sur le chemin Docker compute : stills (media_volume) tournait sans /mnt/media depuis sa migration Docker (deploy_compute ne montait que /dev/shm). Le stockage du nœud (media_mount) est désormais bind-monté → les dossiers/images sont de nouveau accessibles."
+    ],
+    "Nouveautés (0.3.0)": [
       "Exécution sous Docker (runtime compute générique : image bobi-compute avec Pillow, agent-in-container + réseau macvlan, /dev/shm bind-monté). Le type devient docker-only — créé via Réglages → Déploiement → Nœuds sur un nœud compute (plus de vaisseau LXC)."
     ],
     "Nouveautés (0.2.2)": [
