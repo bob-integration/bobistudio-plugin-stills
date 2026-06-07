@@ -25,7 +25,19 @@ PLUGIN_VERSION = "{plugin_version}"
 MEDIA_ROOT = CONFIG.get("media_root") or "/mnt/media"
 WIDTH  = int(CONFIG.get("width") or 1280);  WIDTH  -= WIDTH % 2
 HEIGHT = int(CONFIG.get("height") or 720);  HEIGHT -= HEIGHT % 2
-FPS    = int(round(float(CONFIG.get("fps") or 25))) or 25
+def _rate_nd(v):
+    """Cadence → (num, den) EXACT (fractionnaire NTSC = N*1000/1001 ; accepte \"30000/1001\")."""
+    try:
+        if isinstance(v, str) and "/" in v:
+            a, b = v.split("/"); return int(a), int(b)
+        f = float(v or 25)
+    except Exception:
+        return 25, 1
+    n = round(f)
+    if abs(f - n) < 0.01: return (n or 25), 1
+    nominal = round(f * 1001.0 / 1000.0); return nominal * 1000, 1001
+FPS_NUM, FPS_DEN = _rate_nd(CONFIG.get("fps") or 25)
+FPS    = max(1, round(FPS_NUM / FPS_DEN))
 # Genlock broadcast : générateur calé en PHASE sur la grille PTP (CLOCK_REALTIME, disciplinée
 # phc2sys) → write_ts = instant de grille, fill & key sur la grille epoch. off → cadence libre.
 _gl = CONFIG.get("genlock", True)
@@ -208,7 +220,7 @@ def feeder():
     kf_f, kf = _open_out("/dev/shm/" + KEY_SHM,  V_TOTAL_SIZE)
     idx = 1
     win_cnt = 0; win_start = time.time()
-    period = 1.0 / FPS
+    period = FPS_DEN / FPS_NUM          # période exacte (cadence rationnelle)
     next_t = _grid_next(time.time(), period) if GENLOCK else time.time()
     while True:
         if GENLOCK:                                    # cadence sur la grille PTP
