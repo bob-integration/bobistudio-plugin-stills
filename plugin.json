@@ -7,7 +7,7 @@
     "label": "Stills",
     "class": "mode-media"
   },
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL : sortie Fill + sortie Key (alpha).",
   "nav": {
     "section": "medias",
@@ -31,7 +31,8 @@
     "width": 1280,
     "height": 720,
     "fps": 25,
-    "media_root": "/mnt/media"
+    "media_root": "/mnt/media",
+    "genlock": true
   },
   "media_volume": true,
   "wiring": {

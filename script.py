@@ -26,6 +26,13 @@ MEDIA_ROOT = CONFIG.get("media_root") or "/mnt/media"
 WIDTH  = int(CONFIG.get("width") or 1280);  WIDTH  -= WIDTH % 2
 HEIGHT = int(CONFIG.get("height") or 720);  HEIGHT -= HEIGHT % 2
 FPS    = int(round(float(CONFIG.get("fps") or 25))) or 25
+# Genlock broadcast : générateur calé en PHASE sur la grille PTP (CLOCK_REALTIME, disciplinée
+# phc2sys) → write_ts = instant de grille, fill & key sur la grille epoch. off → cadence libre.
+_gl = CONFIG.get("genlock", True)
+GENLOCK = _gl if isinstance(_gl, bool) else str(_gl).strip().lower() in ("1", "true", "yes", "on")
+def _grid_next(now_s, interval_s):
+    import math as _m
+    return (_m.floor(now_s / interval_s) + 1) * interval_s
 
 # ─── format shm (identique au pipeline MXL : cf. plugins/player) ─────────────
 CHROMA = str(CONFIG.get("chroma") or "422")
@@ -202,13 +209,18 @@ def feeder():
     idx = 1
     win_cnt = 0; win_start = time.time()
     period = 1.0 / FPS
+    next_t = _grid_next(time.time(), period) if GENLOCK else time.time()
     while True:
-        t0 = time.time()
+        if GENLOCK:                                    # cadence sur la grille PTP
+            dt = next_t - time.time()
+            if dt > 0: time.sleep(dt)
+            ts = int(next_t * 1e9)
+        else:
+            t0 = time.time(); ts = time.time_ns()
         with frames_lock:
             fb = frames["fill"]; kb = frames["key"]
         slot = idx % V_RING_SIZE
         off = V_HEADER_SIZE + slot * V_FRAME_SIZE
-        ts = time.time_ns()
         ff[off:off + V_FRAME_SIZE] = fb
         ff[0:16] = struct.pack("QQ", idx, ts)
         kf[off:off + V_FRAME_SIZE] = kb
@@ -220,9 +232,12 @@ def feeder():
             with metrics_lock:
                 metrics["fps"] = round(win_cnt / el, 1); metrics["frame_index"] = idx
             win_cnt = 0; win_start = time.time()
-        dt = period - (time.time() - t0)
-        if dt > 0:
-            time.sleep(dt)
+        if GENLOCK:
+            next_t += period
+            if next_t < time.time(): next_t = _grid_next(time.time(), period)
+        else:
+            dt = period - (time.time() - t0)
+            if dt > 0: time.sleep(dt)
 
 
 # ─── HTTP : :8080 metrics + :8082 contrôle ───────────────────────────────────

@@ -1,7 +1,10 @@
 {
-  "version": "0.3.1",
-  "date": "2026-06-05",
+  "version": "0.4.0",
+  "date": "2026-06-07",
   "changes": {
+    "Nouveautés": [
+      "Genlock broadcast : le générateur (fill + key) est calé en PHASE sur la grille PTP (CLOCK_REALTIME, disciplinée phc2sys) → write_ts = instant de grille, sorties sur la grille epoch (plus de phase libre). Activé par défaut (deploy_defaults.genlock=true), repli horloge mur si off."
+    ],
     "Corrections": [
       "Montage du volume média sur le chemin Docker compute : stills (media_volume) tournait sans /mnt/media depuis sa migration Docker (deploy_compute ne montait que /dev/shm). Le stockage du nœud (media_mount) est désormais bind-monté → les dossiers/images sont de nouveau accessibles."
     ],
