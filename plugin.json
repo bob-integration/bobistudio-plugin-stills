@@ -5,9 +5,10 @@
   "label": "Images fixes",
   "badge": {
     "label": "Stills",
-    "class": "mode-media"
+    "class": "mode-media",
+    "oklch": "0.78 0.04 230"
   },
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL : sortie Fill + sortie Key (alpha).",
   "nav": {
     "section": "medias",
