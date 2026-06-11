@@ -42,9 +42,13 @@ FPS    = max(1, round(FPS_NUM / FPS_DEN))
 # phc2sys) → write_ts = instant de grille, fill & key sur la grille epoch. off → cadence libre.
 _gl = CONFIG.get("genlock", True)
 GENLOCK = _gl if isinstance(_gl, bool) else str(_gl).strip().lower() in ("1", "true", "yes", "on")
-def _grid_next(now_s, interval_s):
-    import math as _m
-    return (_m.floor(now_s / interval_s) + 1) * interval_s
+def _grid_ns(k):
+    return round(k * 1_000_000_000 * FPS_DEN / FPS_NUM)
+def _grid_k(ns):
+    return ns * FPS_NUM // (1_000_000_000 * FPS_DEN)
+def _grid_sleep_until(deadline_ns):
+    dt = (deadline_ns - time.clock_gettime_ns(time.CLOCK_REALTIME)) / 1e9
+    if dt > 0: time.sleep(dt)
 
 # ─── format shm (identique au pipeline MXL : cf. plugins/player) ─────────────
 CHROMA = str(CONFIG.get("chroma") or "422")
@@ -220,13 +224,12 @@ def feeder():
     kf_f, kf = _open_out("/dev/shm/" + KEY_SHM,  V_TOTAL_SIZE)
     idx = 1
     win_cnt = 0; win_start = time.time()
-    period = FPS_DEN / FPS_NUM          # période exacte (cadence rationnelle)
-    next_t = _grid_next(time.time(), period) if GENLOCK else time.time()
+    period = FPS_DEN / FPS_NUM
+    frame_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME)) + 2
     while True:
-        if GENLOCK:                                    # cadence sur la grille PTP
-            dt = next_t - time.time()
-            if dt > 0: time.sleep(dt)
-            ts = int(next_t * 1e9)
+        if GENLOCK:
+            _grid_sleep_until(_grid_ns(frame_k))
+            ts = _grid_ns(frame_k)
         else:
             t0 = time.time(); ts = time.time_ns()
         with frames_lock:
@@ -240,13 +243,14 @@ def feeder():
         idx += 1
         win_cnt += 1
         el = time.time() - win_start
-        if el >= 1.0:                                  # fps sur fenêtre glissante (~1s)
+        if el >= 1.0:
             with metrics_lock:
                 metrics["fps"] = round(win_cnt / el, 1); metrics["frame_index"] = idx
             win_cnt = 0; win_start = time.time()
         if GENLOCK:
-            next_t += period
-            if next_t < time.time(): next_t = _grid_next(time.time(), period)
+            frame_k += 1
+            now_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME))
+            if frame_k < now_k: frame_k = now_k + 1   # rattrapage si retard système
         else:
             dt = period - (time.time() - t0)
             if dt > 0: time.sleep(dt)

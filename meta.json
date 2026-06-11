@@ -1,13 +1,13 @@
 {
-  "version": "0.5.0",
-  "date": "2026-06-07",
+  "version": "0.5.1",
+  "date": "2026-06-08",
   "changes": {
     "Nouveautés": [
       "Cadences FRACTIONNAIRES natives (29.97/59.94/23.976) : la période de sortie est désormais EXACTE (num/den : 29.97→30000/1001, 59.94→60000/1001) au lieu de 1/round(fps) qui dérivait de 0,1 %. _rate_nd() mappe la cadence et accepte la forme 30000/1001 (chaîne). Entier (25/50) inchangé.",
       "Genlock broadcast : le générateur (fill + key) est calé en PHASE sur la grille PTP (CLOCK_REALTIME, disciplinée phc2sys) → write_ts = instant de grille, sorties sur la grille epoch (plus de phase libre). Activé par défaut (deploy_defaults.genlock=true), repli horloge mur si off."
     ],
     "Corrections": [
-      "Montage du volume média sur le chemin Docker compute : stills (media_volume) tournait sans /mnt/media depuis sa migration Docker (deploy_compute ne montait que /dev/shm). Le stockage du nœud (media_mount) est désormais bind-monté → les dossiers/images sont de nouveau accessibles."
+      "Timestamp de grille en arithmétique entière exacte (_grid_ns/_grid_k/_grid_sleep_until, pattern player) au lieu de int(next_t * 1e9) float → précision nanoseconde, dérive float éliminée."
     ],
     "Nouveautés (0.3.0)": [
       "Exécution sous Docker (runtime compute générique : image bobi-compute avec Pillow, agent-in-container + réseau macvlan, /dev/shm bind-monté). Le type devient docker-only — créé via Réglages → Déploiement → Nœuds sur un nœud compute (plus de vaisseau LXC)."
@@ -15,7 +15,6 @@
     "Nouveautés (0.2.2)": [
       "Profondeur de bits du pipeline shm configurable 8/10/12 bits — pilotée par Réglages → MXL « Profondeur du pipeline shm » (force8 par défaut : 8 bits, comportement inchangé ; suivi du format : frames 10/12 bits stockées sur 16 bits, ×2 mémoire)."
     ],
-    "Corrections": [],
     "Bugs connus": []
   }
 }
