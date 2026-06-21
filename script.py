@@ -5,18 +5,21 @@
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stills plugin — affiche une IMAGE FIXE (avec transparence éventuelle) et PRODUIT
-# deux shm vidéo YUV420p au format ring MXL :
+# deux flux vidéo planar via le SDK MXL (bobimxl) :
 #   Fill = {hostname}        (l'image cadrée, RGB)
 #   Key  = {hostname}_key    (l'alpha en luma : blanc=opaque, noir=transparent)
+# MIGRÉ MXL (Phase 1, sans double-écriture legacy) : le writer commit un grain planar par
+# trame ; le ring/horodatage sont gérés par libmxl. Genlock → index de grain = grille PTP.
 #
 # Ce fichier est un TEMPLATE str.format() : SEULS {config} / {hostname} /
 # {plugin_version} sont des placeholders. TOUTE autre accolade littérale ({{ }})
 # doit être doublée, sinon str.format() échoue.
 # ─────────────────────────────────────────────────────────────────────────────
-import os, io, mmap, struct, time, json, threading, urllib.parse
+import os, io, time, json, threading, urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import numpy as np
 from PIL import Image
+import bobimxl
 
 CONFIG         = {config}
 HOSTNAME       = "{hostname}"
@@ -67,12 +70,11 @@ PIX_FMT = ({{"420": "yuv420p", "422": "yuv422p", "444": "yuv444p"}}.get(CHROMA, 
            + (("12le" if BIT_DEPTH >= 12 else "10le") if _DEEP else ""))
 UV_W = WIDTH // _CW
 UV_H = HEIGHT // _CH
-V_HEADER_SIZE = 64
-V_RING_SIZE   = CONFIG.get("shm_video_ring", 10)
+# MXL gère le ring + l'horodatage en interne → on ne garde que la taille d'UNE frame planar
+# (= taille de grain attendue ; bobimxl la recalcule comme somme des plans Y+Cb+Cr).
 Y_SIZE        = WIDTH * HEIGHT * _BPS
 UV_SIZE       = UV_W * UV_H * _BPS
 V_FRAME_SIZE  = Y_SIZE + 2 * UV_SIZE
-V_TOTAL_SIZE  = V_HEADER_SIZE + V_RING_SIZE * V_FRAME_SIZE
 
 FILL_SHM = HOSTNAME
 KEY_SHM  = HOSTNAME + "_key"
@@ -212,40 +214,39 @@ def _render(file, fit, x, y, size):
     return True, "ok"
 
 
-# ─── producteurs shm (Fill + Key) ────────────────────────────────────────────
-def _open_out(path, size):
-    with open(path, "wb") as f:
-        f.write(b"\x00" * size)
-    f = open(path, "r+b")
-    return f, mmap.mmap(f.fileno(), size)
-
+# ─── producteurs MXL (Fill + Key) ────────────────────────────────────────────
 def feeder():
-    ff_f, ff = _open_out("/dev/shm/" + FILL_SHM, V_TOTAL_SIZE)
-    kf_f, kf = _open_out("/dev/shm/" + KEY_SHM,  V_TOTAL_SIZE)
-    idx = 1
+    # Domaine MXL = $MXL_DOMAIN ou /dev/shm/mxl (sous-rép. du tmpfs bind-monté). Deux flux
+    # planar nommés comme les anciens shm (les consommateurs MXL les retrouvent par le NOM).
+    inst = bobimxl.Instance()
+    mode = "tai" if GENLOCK else "free"
+    fill_w = bobimxl.Writer(inst, FILL_SHM, WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
+                            FPS_NUM, FPS_DEN, index_mode=mode)
+    key_w  = bobimxl.Writer(inst, KEY_SHM,  WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
+                            FPS_NUM, FPS_DEN, index_mode=mode)
     win_cnt = 0; win_start = time.time()
     period = FPS_DEN / FPS_NUM
     frame_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME)) + 2
     while True:
         if GENLOCK:
             _grid_sleep_until(_grid_ns(frame_k))
-            ts = _grid_ns(frame_k)
+            idx = frame_k            # index de grain = position sur la grille PTP (genlock)
         else:
-            t0 = time.time(); ts = time.time_ns()
+            t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
         with frames_lock:
             fb = frames["fill"]; kb = frames["key"]
-        slot = idx % V_RING_SIZE
-        off = V_HEADER_SIZE + slot * V_FRAME_SIZE
-        ff[off:off + V_FRAME_SIZE] = fb
-        ff[0:16] = struct.pack("QQ", idx, ts)
-        kf[off:off + V_FRAME_SIZE] = kb
-        kf[0:16] = struct.pack("QQ", idx, ts)
-        idx += 1
+        # Écriture zéro-copie : on copie les octets planar dans la vue numpy du grain, commit.
+        gidx, gi_f, view_f = fill_w.open_grain(index=idx)
+        view_f[:len(fb)] = np.frombuffer(fb, dtype=np.uint8)
+        fill_w.commit(gi_f)
+        _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
+        view_k[:len(kb)] = np.frombuffer(kb, dtype=np.uint8)
+        key_w.commit(gi_k)
         win_cnt += 1
         el = time.time() - win_start
         if el >= 1.0:
             with metrics_lock:
-                metrics["fps"] = round(win_cnt / el, 1); metrics["frame_index"] = idx
+                metrics["fps"] = round(win_cnt / el, 1); metrics["frame_index"] = gidx
             win_cnt = 0; win_start = time.time()
         if GENLOCK:
             frame_k += 1
