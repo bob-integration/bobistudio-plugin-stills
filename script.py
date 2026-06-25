@@ -64,6 +64,13 @@ _NP_DT = np.uint16 if _DEEP else np.uint8
 _SCALE = 1 << (BIT_DEPTH - 8)
 _MAXV  = (1 << BIT_DEPTH) - 1
 _NEUTRAL = 1 << (BIT_DEPTH - 1)
+# ENTRELACÉ NATIF (modèle SDK MXL) : un GRAIN = 1 CHAMP. Le générateur rend une TRAME pleine
+# (HEIGHT) puis, si le balayage de sortie est entrelacé, l'éclate en 2 champs (top=lignes paires,
+# bottom=impaires) émis à la cadence/index CHAMP. La sortie est DÉCLARÉE entrelacée (Writer) → le
+# reste de la chaîne reste champ-natif (jamais désentrelacé). Progressif inchangé.
+SCAN = str(CONFIG.get("scan") or "progressive")
+INTERLACED  = SCAN.startswith("interlaced")
+FIELD_ORDER = "bff" if SCAN == "interlaced_bff" else "tff"
 _CW = {{"420": 2, "422": 2, "444": 1}}.get(CHROMA, 2)   # diviseur largeur chroma
 _CH = {{"420": 2, "422": 1, "444": 1}}.get(CHROMA, 1)   # diviseur hauteur chroma
 PIX_FMT = ({{"420": "yuv420p", "422": "yuv422p", "444": "yuv444p"}}.get(CHROMA, "yuv422p")
@@ -75,6 +82,23 @@ UV_H = HEIGHT // _CH
 Y_SIZE        = WIDTH * HEIGHT * _BPS
 UV_SIZE       = UV_W * UV_H * _BPS
 V_FRAME_SIZE  = Y_SIZE + 2 * UV_SIZE
+# plans (taille, octets/ligne) pour l'éclatement TRAME → 2 CHAMPS quand la sortie est entrelacée
+_PLANES = [(Y_SIZE, WIDTH * _BPS), (UV_SIZE, UV_W * _BPS), (UV_SIZE, UV_W * _BPS)]
+
+def _split_fields(full_b):
+    """TRAME planar pleine → (champ_1er, champ_2nd). tff → 1er champ = lignes paires ; bff = impaires.
+    Renvoie les 2 grains-champs prêts à écrire (octets planar demi-hauteur)."""
+    bff = FIELD_ORDER == "bff"
+    a = bytearray(); b = bytearray(); off = 0
+    for (psz, rb) in _PLANES:
+        pl = np.frombuffer(full_b, dtype=np.uint8, count=psz, offset=off).reshape(-1, rb)
+        ev = pl[0::2]; od = pl[1::2]                 # lignes paires / impaires
+        if bff:                                      # bottom (impaires) émis en 1er
+            a += od.tobytes(); b += ev.tobytes()
+        else:                                        # top (paires) émis en 1er
+            a += ev.tobytes(); b += od.tobytes()
+        off += psz
+    return bytes(a), bytes(b)
 
 FILL_SHM = HOSTNAME
 KEY_SHM  = HOSTNAME + "_key"
@@ -220,13 +244,22 @@ def feeder():
     # planar nommés comme les anciens shm (les consommateurs MXL les retrouvent par le NOM).
     inst = bobimxl.Instance()
     mode = "tai" if GENLOCK else "free"
+    # Sortie déclarée entrelacée si SCAN=interlaced_* : libmxl dimensionne chaque grain à 1 CHAMP
+    # (½ HEIGHT) et double la cadence en interne ; on écrit 2 grains-champs par trame.
     fill_w = bobimxl.Writer(inst, FILL_SHM, WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
-                            FPS_NUM, FPS_DEN, index_mode=mode)
+                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN)
     key_w  = bobimxl.Writer(inst, KEY_SHM,  WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
-                            FPS_NUM, FPS_DEN, index_mode=mode)
+                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN)
     win_cnt = 0; win_start = time.time()
     period = FPS_DEN / FPS_NUM
     frame_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME)) + 2
+
+    def _emit(w, payload, idx):
+        _, gi, view = w.open_grain(index=idx)
+        n = min(len(payload), len(view))
+        view[:n] = np.frombuffer(payload, dtype=np.uint8, count=n)
+        w.commit(gi)
+
     while True:
         if GENLOCK:
             _grid_sleep_until(_grid_ns(frame_k))
@@ -235,13 +268,22 @@ def feeder():
             t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
         with frames_lock:
             fb = frames["fill"]; kb = frames["key"]
-        # Écriture zéro-copie : on copie les octets planar dans la vue numpy du grain, commit.
-        gidx, gi_f, view_f = fill_w.open_grain(index=idx)
-        view_f[:len(fb)] = np.frombuffer(fb, dtype=np.uint8)
-        fill_w.commit(gi_f)
-        _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
-        view_k[:len(kb)] = np.frombuffer(kb, dtype=np.uint8)
-        key_w.commit(gi_k)
+        if INTERLACED:
+            # éclate la TRAME en 2 champs → index CHAMP (pair = 1er champ) = 2*trame, 2*trame+1
+            f0, f1 = _split_fields(fb); k0, k1 = _split_fields(kb)
+            fi0 = (2 * idx) if idx is not None else None
+            fi1 = (2 * idx + 1) if idx is not None else None
+            _emit(fill_w, f0, fi0); _emit(key_w, k0, fi0)
+            _emit(fill_w, f1, fi1); _emit(key_w, k1, fi1)
+            gidx = fi1 if fi1 is not None else fill_w._counter - 1
+        else:
+            # Écriture zéro-copie : on copie les octets planar dans la vue numpy du grain, commit.
+            gidx, gi_f, view_f = fill_w.open_grain(index=idx)
+            view_f[:len(fb)] = np.frombuffer(fb, dtype=np.uint8)
+            fill_w.commit(gi_f)
+            _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
+            view_k[:len(kb)] = np.frombuffer(kb, dtype=np.uint8)
+            key_w.commit(gi_k)
         win_cnt += 1
         el = time.time() - win_start
         if el >= 1.0:
@@ -291,7 +333,7 @@ class ControlHandler(BaseHTTPRequestHandler):
             s.update({{"fps": m["fps"], "frame_index": m["frame_index"],
                        "media_root": MEDIA_ROOT, "plugin_version": PLUGIN_VERSION,
                        "fill_shm": FILL_SHM, "key_shm": KEY_SHM,
-                       "width": WIDTH, "height": HEIGHT}})
+                       "width": WIDTH, "height": HEIGHT, "scan": SCAN}})
             self._json(200, s)
         elif u.path == "/folders":
             self._json(200, {{"folders": _list_folders(), "media_root": MEDIA_ROOT}})
