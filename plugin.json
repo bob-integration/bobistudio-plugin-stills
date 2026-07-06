@@ -58,5 +58,30 @@
       "/thumb",
       "/select"
     ]
-  }
+  },
+  "actions": [
+    {
+      "id": "select",
+      "label": "Afficher une image",
+      "endpoint": "/select",
+      "params": [
+        {
+          "key": "file",
+          "label": "Image",
+          "type": "text",
+          "options_endpoint": "/images",
+          "options_path": "images"
+        }
+      ]
+    }
+  ],
+  "state": [
+    {
+      "id": "file",
+      "label": "Image affichée",
+      "endpoint": "/state",
+      "path": "file",
+      "type": "text"
+    }
+  ]
 }
