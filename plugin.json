@@ -72,7 +72,8 @@
           "options_endpoint": "/images",
           "options_path": "images"
         }
-      ]
+      ],
+      "feedback": {"state": "file", "value_from": "file"}
     }
   ],
   "state": [
