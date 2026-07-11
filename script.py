@@ -85,6 +85,69 @@ V_FRAME_SIZE  = Y_SIZE + 2 * UV_SIZE
 # plans (taille, octets/ligne) pour l'éclatement TRAME → 2 CHAMPS quand la sortie est entrelacée
 _PLANES = [(Y_SIZE, WIDTH * _BPS), (UV_SIZE, UV_W * _BPS), (UV_SIZE, UV_W * _BPS)]
 
+# ── MODE TRANCHE (chantier latence sous-trame, cf. patch mxl-planar-slices) ─────────────────
+# slice_mode=true → les trames Fill/Key (déjà complètes : buffers rendus une fois par image)
+# sont émises PAR BANDES avec commit progressif (validSlices=1..N, pattern delay
+# _emit_frame_sliced) → l'aval slice-aware démarre sur la 1ʳᵉ bande. Éligibilité : sortie
+# PROGRESSIVE + hauteur divisible (algo _out_slice_h) ; entrelacé → repli whole-frame.
+# slice_mode absent/False → comportement STRICTEMENT octet-identique à l'historique.
+def _as_bool_cfg(v, default=False):
+    if v is None:
+        return default
+    if isinstance(v, str):
+        return v.strip().lower() in ("1", "true", "yes", "on")
+    return bool(v)
+SLICE_MODE  = _as_bool_cfg(CONFIG.get("slice_mode"), default=False)
+SLICE_LINES = max(1, int(CONFIG.get("slice_lines") or 36))
+_SLICE_TARGET = max(1, 1080 // SLICE_LINES)
+
+def _out_slice_h(oh, ch=1):
+    """MODE TRANCHE — slice_height de la sortie (même algo que delay/pyramide) : le plus petit
+    diviseur sh de oh avec sh ≥ max(1, oh // _SLICE_TARGET), MULTIPLE de ch (lignes chroma
+    entières par bande). Aucun diviseur raisonnable (sh > oh//2) → 0 = inéligible."""
+    lo = max(1, oh // _SLICE_TARGET)
+    for sh in range(lo, oh // 2 + 1):
+        if oh % sh == 0 and sh % ch == 0:
+            return sh
+    return 0
+
+V_SLICE_H = _out_slice_h(HEIGHT, _CH) if (SLICE_MODE and not INTERLACED) else 0
+_V_TOTAL_SLICES = (HEIGHT // V_SLICE_H) if V_SLICE_H else 1
+_Y_ROW  = WIDTH * _BPS
+_UV_ROW = UV_W * _BPS
+
+def _copy_band(dst, src, a, b):
+    """MODE TRANCHE — copie IDENTITÉ des lignes image [a, b) sur les 3 plans (Y|Cb|Cr) du
+    payload planar, en OCTETS plats. `b` est toujours un multiple de V_SLICE_H (lui-même
+    multiple de _CH) → lignes chroma entières. Renvoie b."""
+    if b <= a:
+        return a
+    dst[a * _Y_ROW:b * _Y_ROW] = src[a * _Y_ROW:b * _Y_ROW]
+    ca = a // _CH; cb = b // _CH
+    if cb > ca:
+        o1 = Y_SIZE; o2 = Y_SIZE + UV_SIZE
+        dst[o1 + ca * _UV_ROW:o1 + cb * _UV_ROW] = src[o1 + ca * _UV_ROW:o1 + cb * _UV_ROW]
+        dst[o2 + ca * _UV_ROW:o2 + cb * _UV_ROW] = src[o2 + ca * _UV_ROW:o2 + cb * _UV_ROW]
+    return b
+
+def _emit_grain_sliced(w, gi, vw, data):
+    """MODE TRANCHE — émet une trame déjà COMPLÈTE dans un grain OUVERT, par bandes + commit
+    progressif (validSlices=1..N, quasi gratuit). Commit FINAL garanti (un grain laissé
+    partiel ne serait jamais lisible)."""
+    try:
+        src = np.frombuffer(data, dtype=np.uint8)
+        if src.size < V_FRAME_SIZE:
+            n = min(src.size, len(vw))
+            vw[:n] = src[:n]           # frame courte (défensif) : copie pleine, pas de bandes
+            return
+        a = 0
+        for k in range(1, _V_TOTAL_SLICES + 1):
+            a = _copy_band(vw, src, a, min(HEIGHT, k * V_SLICE_H))
+            if k < _V_TOTAL_SLICES:
+                w.commit(gi, valid_slices=k)   # réveille l'aval à chaque bande
+    finally:
+        w.commit(gi, valid_slices=None)
+
 def _split_fields(full_b):
     """TRAME planar pleine → (champ_1er, champ_2nd). tff → 1er champ = lignes paires ; bff = impaires.
     Renvoie les 2 grains-champs prêts à écrire (octets planar demi-hauteur)."""
@@ -133,7 +196,8 @@ frames_lock = threading.Lock()
 frames = {{"fill": _black_fill(), "key": _black_key()}}
 
 metrics_lock = threading.Lock()
-metrics = {{"fps": 0.0, "frame_index": 0, "file": "", "plugin_version": PLUGIN_VERSION}}
+metrics = {{"fps": 0.0, "frame_index": 0, "file": "",
+            "slice_mode": bool(V_SLICE_H), "plugin_version": PLUGIN_VERSION}}
 
 
 # ─── stockage : dossiers + images (relatifs à MEDIA_ROOT) ────────────────────
@@ -246,10 +310,19 @@ def feeder():
     mode = "tai" if GENLOCK else "free"
     # Sortie déclarée entrelacée si SCAN=interlaced_* : libmxl dimensionne chaque grain à 1 CHAMP
     # (½ HEIGHT) et double la cadence en interne ; on écrit 2 grains-champs par trame.
+    # MODE TRANCHE : les flowDef Fill/Key portent slice_height quand éligible (progressif +
+    # hauteur divisible) → grains publiés en N tranches égales ; sinon inchangés (historique).
+    _slkw = {{"slice_height": V_SLICE_H}} if V_SLICE_H else {{}}
     fill_w = bobimxl.Writer(inst, FILL_SHM, WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
-                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN)
+                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN, **_slkw)
     key_w  = bobimxl.Writer(inst, KEY_SHM,  WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
-                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN)
+                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN, **_slkw)
+    if SLICE_MODE:
+        print("slice_mode %s : sorties %s/%s %s" % ("actif" if V_SLICE_H else "INÉLIGIBLE",
+              FILL_SHM, KEY_SHM,
+              ("tranchées par %d lignes (%d tranches)" % (V_SLICE_H, _V_TOTAL_SLICES))
+              if V_SLICE_H else "(%s) → chemin historique"
+              % ("entrelacé" if INTERLACED else "hauteur %d sans diviseur" % HEIGHT)))
     win_cnt = 0; win_start = time.time()
     period = FPS_DEN / FPS_NUM
     frame_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME)) + 2
@@ -276,6 +349,13 @@ def feeder():
             _emit(fill_w, f0, fi0); _emit(key_w, k0, fi0)
             _emit(fill_w, f1, fi1); _emit(key_w, k1, fi1)
             gidx = fi1 if fi1 is not None else fill_w._counter - 1
+        elif V_SLICE_H:
+            # MODE TRANCHE : émission par bandes des trames déjà rendues (commit progressif).
+            # Mêmes index de grain que l'historique — seul le commit change.
+            gidx, gi_f, view_f = fill_w.open_grain(index=idx)
+            _emit_grain_sliced(fill_w, gi_f, view_f, fb)
+            _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
+            _emit_grain_sliced(key_w, gi_k, view_k, kb)
         else:
             # Écriture zéro-copie : on copie les octets planar dans la vue numpy du grain, commit.
             gidx, gi_f, view_f = fill_w.open_grain(index=idx)

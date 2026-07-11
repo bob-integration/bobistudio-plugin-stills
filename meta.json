@@ -1,7 +1,10 @@
 {
-  "version": "0.7.0",
-  "date": "2026-06-25",
+  "version": "0.8.0",
+  "date": "2026-07-11",
   "changes": {
+    "Mode tranche MXL (0.8.0)": [
+      "MODE TRANCHE (slice_mode, chantier latence sous-trame) : Fill et Key sont émis PAR BANDES avec commit progressif (validSlices=1..N, pattern delay) quand la sortie est éligible (progressif + hauteur divisible, slice_lines=36) ; les flowDef portent slice_height → l'aval slice-aware démarre sur la 1ʳᵉ bande. Entrelacé → repli whole-frame. Défaut OFF = octet-identique."
+    ],
     "Entrelacé NATIF « 1 grain = 1 champ » — sortie entrelacée optionnelle (0.7.0)": [
       "Le générateur peut DÉCLARER une sortie entrelacée (config `scan` = interlaced_tff|interlaced_bff) : il rend toujours une TRAME pleine puis l'éclate en 2 CHAMPS (top=lignes paires, bottom=impaires en tff ; inversé en bff) émis à la cadence/index CHAMP (2·trame, 2·trame+1) via un Writer déclaré entrelacé → la chaîne reste champ-natif (jamais désentrelacé) et un still peut être mixé avec des sources entrelacées. Progressif (défaut) inchangé. Round-trip champ exact (split↔weave recorder)."
     ],
