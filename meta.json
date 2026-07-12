@@ -1,7 +1,10 @@
 {
-  "version": "0.8.0",
-  "date": "2026-07-11",
+  "version": "0.8.1",
+  "date": "2026-07-12",
   "changes": {
+    "Réglages mode tranche (0.8.1)": [
+      "Exposition des réglages du mode tranche dans le panneau ⚙ Réglages et la palette (config_schema, scope system) : slice_mode, slice_lines. Schéma/UI seulement — aucun changement de comportement du script."
+    ],
     "Mode tranche MXL (0.8.0)": [
       "MODE TRANCHE (slice_mode, chantier latence sous-trame) : Fill et Key sont émis PAR BANDES avec commit progressif (validSlices=1..N, pattern delay) quand la sortie est éligible (progressif + hauteur divisible, slice_lines=36) ; les flowDef portent slice_height → l'aval slice-aware démarre sur la 1ʳᵉ bande. Entrelacé → repli whole-frame. Défaut OFF = octet-identique."
     ],
