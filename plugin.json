@@ -57,6 +57,9 @@
       "/images",
       "/thumb",
       "/select"
+    ],
+    "read_endpoints": [
+      "/state"
     ]
   },
   "actions": [
@@ -88,6 +91,43 @@
       "type": "text"
     }
   ],
+  "param_tree": {
+    "global_groups": [
+      {
+        "label": "Positionnement de l'image",
+        "endpoint": "/select",
+        "fields": {
+          "fit": {
+            "label": "Adaptation",
+            "type": "enum",
+            "options": ["native", "fit", "stretch"],
+            "default": "native"
+          },
+          "x": {
+            "label": "Décalage X",
+            "type": "number",
+            "min": -50,
+            "max": 50,
+            "default": 0
+          },
+          "y": {
+            "label": "Décalage Y",
+            "type": "number",
+            "min": -50,
+            "max": 50,
+            "default": 0
+          },
+          "size": {
+            "label": "Échelle",
+            "type": "number",
+            "min": 1,
+            "max": 400,
+            "default": 100
+          }
+        }
+      }
+    ]
+  },
   "config_schema": [
     {
       "key": "slice_mode",
