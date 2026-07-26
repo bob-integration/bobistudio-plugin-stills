@@ -458,7 +458,8 @@ class ControlHandler(BaseHTTPRequestHandler):
             s.update({{"fps": m["fps"], "frame_index": m["frame_index"],
                        "media_root": MEDIA_ROOT, "plugin_version": PLUGIN_VERSION,
                        "fill_shm": FILL_SHM, "key_shm": KEY_SHM,
-                       "width": WIDTH, "height": HEIGHT, "scan": SCAN}})
+                       "width": WIDTH, "height": HEIGHT, "scan": SCAN,
+                       "log_level": LOG_LEVEL}})   # lisible en condition de macro
             self._json(200, s)
         elif u.path == "/folders":
             self._json(200, {{"folders": _list_folders(), "media_root": MEDIA_ROOT}})
@@ -506,6 +507,12 @@ class ControlHandler(BaseHTTPRequestHandler):
             with metrics_lock:
                 metrics["file"] = s["file"] if ok else metrics["file"]
             self._json(200 if ok else 400, {{"ok": ok, "detail": detail, "file": s["file"]}})
+        elif u.path == "/log_level":
+            # Verbosité À CHAUD (pas de redéploiement) : instruction d'incident. Le niveau
+            # PERSISTANT reste le champ `log_level` du config_schema ; celui-ci est volatil.
+            b = self._read()
+            ok = set_log_level(b.get("level") or b.get("log_level"))
+            self._json(200 if ok else 400, {{"ok": ok, "log_level": LOG_LEVEL}})
         else:
             self._json(404, {{"error": "not found"}})
     def log_message(self, *a): pass
