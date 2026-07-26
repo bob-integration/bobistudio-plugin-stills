@@ -25,6 +25,51 @@ CONFIG         = {config}
 HOSTNAME       = "{hostname}"
 PLUGIN_VERSION = "{plugin_version}"
 
+# ─── Niveau de log ─────────────────────────────────────────────────────────
+# `log_level` (config_schema du plugin, défaut « info ») filtre les impressions du script.
+# Le critère n'est PAS « verbeux vs silencieux » mais ÉVÉNEMENT vs MÉTRIQUE :
+#   debug   — le lance-flammes : par trame, par bande, décisions internes
+#   info    — ÉVÉNEMENTS rares et signifiants  ← DÉFAUT (toujours visible) : démarrage/
+#             arrêt, session ouverte/fermée, changement de format, reconnexion, repli sur
+#             un chemin dégradé, entrée qui apparaît/disparaît, rebascule.
+#   warning — anomalies et replis subis
+#   error   — échecs
+# RÈGLE 1 : après une panne, le journal PAR DÉFAUT doit permettre de RECONSTITUER
+#   l'histoire. Élever le niveau après coup ne récupère RIEN : ce qui n'a pas été écrit
+#   est perdu. On ne coupe donc pas l'information, on coupe la redondance.
+# RÈGLE 2 : une MÉTRIQUE PÉRIODIQUE (fps, compteurs) ne se journalise PAS — elle est déjà
+#   publiée sur :8080 et échantillonnée par l'orchestrateur. La journaliser duplique la
+#   mesure ET consomme la fenêtre de rétention (journal Docker non roté : le bruit purge
+#   les lignes utiles anciennes). Au mieux `debug`.
+# RÈGLE 3 : un événement qui peut partir EN RAFALE s'AGRÈGE sur une fenêtre et sort en UNE
+#   ligne périodique (« N frames lentes sur la dernière minute, pire … ») — le signal
+#   reste, le spam disparaît.
+# Réglable à chaud, sans redéployer, quand le plugin expose l'endpoint de contrôle :
+# POST :8082/log_level {{"level": "debug"}} (exposé aux macros via param_tree/actions).
+_LOG_ORDER = {{"debug": 10, "info": 20, "warning": 30, "error": 40}}
+LOG_LEVEL = str(CONFIG.get("log_level") or "info").strip().lower()
+if LOG_LEVEL not in _LOG_ORDER:
+    LOG_LEVEL = "info"
+_LOG_MIN = _LOG_ORDER[LOG_LEVEL]
+
+
+def log(msg, niveau="info"):
+    """Impression gatée par le niveau de log courant (défaut du message : « info »)."""
+    if _LOG_ORDER.get(niveau, 20) >= _LOG_MIN:
+        print(msg, flush=True)
+
+
+def set_log_level(niveau):
+    """Change le niveau à chaud. Renvoie True si le niveau est reconnu."""
+    global LOG_LEVEL, _LOG_MIN
+    lv = str(niveau or "").strip().lower()
+    if lv not in _LOG_ORDER:
+        return False
+    LOG_LEVEL, _LOG_MIN = lv, _LOG_ORDER[lv]
+    return True
+
+
+
 MEDIA_ROOT = CONFIG.get("media_root") or "/mnt/media"
 WIDTH  = int(CONFIG.get("width") or 1280);  WIDTH  -= WIDTH % 2
 HEIGHT = int(CONFIG.get("height") or 720);  HEIGHT -= HEIGHT % 2
@@ -318,11 +363,11 @@ def feeder():
     key_w  = bobimxl.Writer(inst, KEY_SHM,  WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
                             FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN, **_slkw)
     if SLICE_MODE:
-        print("slice_mode %s : sorties %s/%s %s" % ("actif" if V_SLICE_H else "INÉLIGIBLE",
-              FILL_SHM, KEY_SHM,
-              ("tranchées par %d lignes (%d tranches)" % (V_SLICE_H, _V_TOTAL_SLICES))
-              if V_SLICE_H else "(%s) → chemin historique"
-              % ("entrelacé" if INTERLACED else "hauteur %d sans diviseur" % HEIGHT)))
+        log("slice_mode %s : sorties %s/%s %s" % ("actif" if V_SLICE_H else "INÉLIGIBLE",
+            FILL_SHM, KEY_SHM,
+            ("tranchées par %d lignes (%d tranches)" % (V_SLICE_H, _V_TOTAL_SLICES))
+            if V_SLICE_H else "(%s) → chemin historique"
+            % ("entrelacé" if INTERLACED else "hauteur %d sans diviseur" % HEIGHT)), "info")
     win_cnt = 0; win_start = time.time()
     period = FPS_DEN / FPS_NUM
     frame_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME)) + 2
@@ -480,7 +525,7 @@ if (state["file"] or "").strip():
     try:
         _render(state["file"], state["fit"], state["x"], state["y"], state["size"])
     except Exception as e:
-        print("render initial:", e)
+        log("render initial: %s" % (e,), "warning")
 
 while True:
     time.sleep(1)

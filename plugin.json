@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.8.2",
+  "version": "0.9.0",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
     "section": "medias",
@@ -33,7 +33,8 @@
     "height": 720,
     "fps": 25,
     "media_root": "/mnt/media",
-    "genlock": true
+    "genlock": true,
+    "log_level": "info"
   },
   "media_volume": true,
   "wiring": {
@@ -100,7 +101,11 @@
           "fit": {
             "label": "Adaptation",
             "type": "enum",
-            "options": ["native", "fit", "stretch"],
+            "options": [
+              "native",
+              "fit",
+              "stretch"
+            ],
             "default": "native"
           },
           "x": {
@@ -151,6 +156,32 @@
       "visible_if": {
         "slice_mode": true
       }
+    },
+    {
+      "key": "log_level",
+      "type": "select",
+      "label": "Niveau de log",
+      "help": "Verbosité du journal du conteneur. Défaut « Événements » : les faits marquants (démarrage/arrêt, changement de format, reconnexion, repli sur un chemin dégradé, entrée qui apparaît ou disparaît) sont TOUJOURS écrits — après une panne le journal doit permettre de reconstituer l'histoire, et élever le niveau après coup ne récupère rien. Les métriques périodiques (fps, compteurs) ne sont PAS journalisées : elles sont déjà publiées sur :8080. « Détaillé » = lance-flammes par trame, à n'activer que le temps d'un diagnostic (le journal Docker n'est pas roté).",
+      "options": [
+        {
+          "value": "debug",
+          "label": "Détaillé (par trame — diagnostic ponctuel)"
+        },
+        {
+          "value": "info",
+          "label": "Événements (défaut)"
+        },
+        {
+          "value": "warning",
+          "label": "Anomalies seules"
+        },
+        {
+          "value": "error",
+          "label": "Erreurs seules"
+        }
+      ],
+      "default": "info",
+      "scope": "user"
     }
   ]
 }
