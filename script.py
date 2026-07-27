@@ -352,16 +352,15 @@ def feeder():
     # Domaine MXL = $MXL_DOMAIN ou /dev/shm/mxl (sous-rép. du tmpfs bind-monté). Deux flux
     # planar nommés comme les anciens shm (les consommateurs MXL les retrouvent par le NOM).
     inst = bobimxl.Instance()
-    mode = "tai" if GENLOCK else "free"
     # Sortie déclarée entrelacée si SCAN=interlaced_* : libmxl dimensionne chaque grain à 1 CHAMP
     # (½ HEIGHT) et double la cadence en interne ; on écrit 2 grains-champs par trame.
     # MODE TRANCHE : les flowDef Fill/Key portent slice_height quand éligible (progressif +
     # hauteur divisible) → grains publiés en N tranches égales ; sinon inchangés (historique).
     _slkw = {{"slice_height": V_SLICE_H}} if V_SLICE_H else {{}}
     fill_w = bobimxl.Writer(inst, FILL_SHM, WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
-                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN, **_slkw)
+                            FPS_NUM, FPS_DEN, interlace=SCAN, **_slkw)
     key_w  = bobimxl.Writer(inst, KEY_SHM,  WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
-                            FPS_NUM, FPS_DEN, index_mode=mode, interlace=SCAN, **_slkw)
+                            FPS_NUM, FPS_DEN, interlace=SCAN, **_slkw)
     if SLICE_MODE:
         log("slice_mode %s : sorties %s/%s %s" % ("actif" if V_SLICE_H else "INÉLIGIBLE",
             FILL_SHM, KEY_SHM,
