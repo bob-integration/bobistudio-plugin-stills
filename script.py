@@ -90,13 +90,6 @@ FPS    = max(1, round(FPS_NUM / FPS_DEN))
 # phc2sys) → write_ts = instant de grille, fill & key sur la grille epoch. off → cadence libre.
 _gl = CONFIG.get("genlock", True)
 GENLOCK = _gl if isinstance(_gl, bool) else str(_gl).strip().lower() in ("1", "true", "yes", "on")
-def _grid_ns(k):
-    return round(k * 1_000_000_000 * FPS_DEN / FPS_NUM)
-def _grid_k(ns):
-    return ns * FPS_NUM // (1_000_000_000 * FPS_DEN)
-def _grid_sleep_until(deadline_ns):
-    dt = (deadline_ns - time.clock_gettime_ns(time.CLOCK_REALTIME)) / 1e9
-    if dt > 0: time.sleep(dt)
 
 # ─── format shm (identique au pipeline MXL : cf. plugins/player) ─────────────
 CHROMA = str(CONFIG.get("chroma") or "422")
@@ -369,7 +362,6 @@ def feeder():
             % ("entrelacé" if INTERLACED else "hauteur %d sans diviseur" % HEIGHT)), "info")
     win_cnt = 0; win_start = time.time()
     period = FPS_DEN / FPS_NUM
-    frame_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME)) + 2
 
     def _emit(w, payload, idx):
         _, gi, view = w.open_grain(index=idx)
@@ -379,8 +371,14 @@ def feeder():
 
     while True:
         if GENLOCK:
-            _grid_sleep_until(_grid_ns(frame_k))
-            idx = frame_k            # index de grain = position sur la grille PTP (genlock)
+            # Coordonnée ET échéance viennent du point unique (bobimxl), sur l'horloge TAI. Le
+            # calcul de grille était fait ici à la main, sur CLOCK_REALTIME — qui vaut l'UTC sur un
+            # nœud correctement synchronisé, soit 37 s à côté de tous les autres producteurs.
+            # `lookahead=2` : viser deux créneaux devant, sinon l'échéance est déjà passée au
+            # réveil. Rattrapage d'un creux d'ordonnancement inclus (on repart de la grille
+            # courante à chaque appel).
+            idx = fill_w.next_index(lookahead=2)
+            bobimxl.sleep_until_tai(fill_w.index_time_ns(idx))
         else:
             t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
         with frames_lock:
@@ -414,11 +412,7 @@ def feeder():
             with metrics_lock:
                 metrics["fps"] = round(win_cnt / el, 1); metrics["frame_index"] = gidx
             win_cnt = 0; win_start = time.time()
-        if GENLOCK:
-            frame_k += 1
-            now_k = _grid_k(time.clock_gettime_ns(time.CLOCK_REALTIME))
-            if frame_k < now_k: frame_k = now_k + 1   # rattrapage si retard système
-        else:
+        if not GENLOCK:
             dt = period - (time.time() - t0)
             if dt > 0: time.sleep(dt)
 
