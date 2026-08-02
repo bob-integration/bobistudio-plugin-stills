@@ -21,6 +21,15 @@ import numpy as np
 from PIL import Image
 import bobimxl
 
+
+def _mxl_lib_state():
+    """Variante libmxl réellement chargée (baseline / x86-64-v3) — diagnostic seul, ne doit
+    JAMAIS faire échouer /state."""
+    try:
+        return bobimxl.lib_info()
+    except Exception:
+        return None
+
 CONFIG         = {config}
 HOSTNAME       = "{hostname}"
 PLUGIN_VERSION = "{plugin_version}"
@@ -452,7 +461,8 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "media_root": MEDIA_ROOT, "plugin_version": PLUGIN_VERSION,
                        "fill_shm": FILL_SHM, "key_shm": KEY_SHM,
                        "width": WIDTH, "height": HEIGHT, "scan": SCAN,
-                       "log_level": LOG_LEVEL}})   # lisible en condition de macro
+                       "log_level": LOG_LEVEL,   # lisible en condition de macro
+                       "mxl_lib": _mxl_lib_state()}})
             self._json(200, s)
         elif u.path == "/folders":
             self._json(200, {{"folders": _list_folders(), "media_root": MEDIA_ROOT}})
