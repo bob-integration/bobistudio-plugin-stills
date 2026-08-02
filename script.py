@@ -401,10 +401,10 @@ def feeder():
         else:
             # Écriture zéro-copie : on copie les octets planar dans la vue numpy du grain, commit.
             gidx, gi_f, view_f = fill_w.open_grain(index=idx)
-            view_f[:len(fb)] = np.frombuffer(fb, dtype=np.uint8)
+            bobimxl.blit(view_f, np.frombuffer(fb, dtype=np.uint8))
             fill_w.commit(gi_f)
             _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
-            view_k[:len(kb)] = np.frombuffer(kb, dtype=np.uint8)
+            bobimxl.blit(view_k, np.frombuffer(kb, dtype=np.uint8))
             key_w.commit(gi_k)
         win_cnt += 1
         el = time.time() - win_start
