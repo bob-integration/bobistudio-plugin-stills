@@ -383,10 +383,12 @@ def feeder():
             # Coordonnée ET échéance viennent du point unique (bobimxl), sur l'horloge TAI. Le
             # calcul de grille était fait ici à la main, sur CLOCK_REALTIME — qui vaut l'UTC sur un
             # nœud correctement synchronisé, soit 37 s à côté de tous les autres producteurs.
-            # `lookahead=2` : viser deux créneaux devant, sinon l'échéance est déjà passée au
-            # réveil. Rattrapage d'un creux d'ordonnancement inclus (on repart de la grille
-            # courante à chaque appel).
-            idx = fill_w.next_index(lookahead=2)
+            # `lookahead=1` : viser LE créneau suivant, et pas au-delà. Dormir jusqu'à l'instant
+            # de la trame allouée consomme la marge : avec L créneaux d'avance, la tête avance de
+            # L par tour et la cadence est divisée par L (mesuré sur avsync le 2026-08-02).
+            # Rattrapage d'un creux d'ordonnancement inclus (on repart de la grille courante à
+            # chaque appel).
+            idx = fill_w.next_index(lookahead=1)
             bobimxl.sleep_until_tai(fill_w.index_time_ns(idx))
         else:
             t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
