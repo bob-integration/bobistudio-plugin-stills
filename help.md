@@ -39,6 +39,13 @@ Fill et Key peuvent être publiés **bande par bande** au lieu d'attendre l'imag
 - **Opt-in** : paramètre `slice_mode` au déploiement (désactivé par défaut — comportement inchangé).
 - Sortie progressive uniquement ; en entrelacé, le chemin classique s'applique.
 
+## Journal (diagnostic)
+
+`log_level` (défaut « Événements ») : les événements marquants (changement d'image, repli sur un
+chemin dégradé) sont toujours écrits ; passer en « Détaillé » ajoute un journal par trame — à
+n'activer que le temps d'un diagnostic, le journal Docker n'est pas roté. Réglable à chaud
+(`/log_level`, sans redéploiement) ou en persistant (config_schema, survit au redéploiement).
+
 ## Notes
 
 - Formats supportés : PNG (avec alpha), JPEG, TIFF, BMP
