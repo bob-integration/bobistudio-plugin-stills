@@ -11,6 +11,17 @@ window.MXLPlugins["stills"] = {
     const toast = (ctx && ctx.toast) || (()=>{});
     const inst  = (ctx && ctx.instance) || {};
 
+    /* i18n (catalogue plugin.stills.*) — repli sur le français du 2e argument. */
+    const T = (k, repli) => {
+      const v = window.t ? window.t(k) : k;
+      return (v && v !== k) ? v : (repli !== undefined ? repli : k);
+    };
+    if (window.t) {
+      el.querySelectorAll('[data-i18n]').forEach(n => { n.textContent = T(n.dataset.i18n, n.textContent); });
+      el.querySelectorAll('[data-i18n-title]').forEach(n => { n.title = T(n.dataset.i18nTitle, n.title); });
+      el.querySelectorAll('[data-i18n-aria]').forEach(n => n.setAttribute('aria-label', T(n.dataset.i18nAria, n.getAttribute('aria-label'))));
+    }
+
     const _pb = el.querySelector('.stl-project-banner'), _npb = el.querySelector('.stl-noproject-banner');
     if (inst.project) { if (_pb) { _pb.style.display=''; _pb.querySelector('.stl-project-name').textContent=inst.project.name; } }
     else { if (_npb) _npb.style.display=''; }
@@ -37,10 +48,10 @@ window.MXLPlugins["stills"] = {
         const list = d.folders || [];
         sel.innerHTML = list.length
           ? list.map(f => `<option value="${f.replace(/"/g,'&quot;')}">${f || '(racine)'}</option>`).join('')
-          : '<option value="">(aucun dossier contenant des images)</option>';
+          : ('<option value="">' + T('plugin.stills.no_image_folder','(aucun dossier contenant des images)') + '</option>');
         if(cur && list.includes(cur)) sel.value = cur;
         loadImages();
-      }catch(e){ status.textContent = 'stockage indisponible'; }
+      }catch(e){ status.textContent = T('plugin.stills.storage_na','stockage indisponible'); }
     }
 
     async function loadImages(){
@@ -50,7 +61,7 @@ window.MXLPlugins["stills"] = {
       try{
         const d = await (await api('/images?folder=' + encodeURIComponent(folder))).json();
         const imgs = d.images || [];
-        if(!imgs.length){ grid.innerHTML = '<div class="stl-empty">Aucune image dans ce dossier.</div>'; return; }
+        if(!imgs.length){ grid.innerHTML = ('<div class="stl-empty">' + T('plugin.stills.no_image','Aucune image dans ce dossier.') + '</div>'); return; }
         grid.innerHTML = imgs.map(p => {
           const pe = p.replace(/"/g,'&quot;');
           return `<button type="button" class="stl-thumb${p===selected?' sel':''}" data-path="${pe}" title="${pe}">
@@ -63,30 +74,30 @@ window.MXLPlugins["stills"] = {
           grid.querySelectorAll('.stl-thumb').forEach(x => x.classList.toggle('sel', x===b));
           apply();
         });
-      }catch(e){ grid.innerHTML = '<div class="stl-empty">Erreur de chargement.</div>'; }
+      }catch(e){ grid.innerHTML = ('<div class="stl-empty">' + T('plugin.stills.err_load','Erreur de chargement.') + '</div>'); }
     }
 
     async function apply(){
-      if(!selected){ toast('Choisissez une image','warning'); return; }
+      if(!selected){ toast(T('plugin.stills.pick_image','Choisissez une image'),'warning'); return; }
       try{
         const r = await (await api('/select', {
           file: selected, folder: $('.stl-folder').value || '',
           fit: fit(), x: xv(), y: yv(), size: sv()
         })).json();
-        if(r.ok) toast('Image affichée : ' + selected.split('/').pop(), 'info');
-        else     toast('Erreur : ' + (r.detail || '?'), 'error');
+        if(r.ok) toast(T('plugin.stills.shown','Image affichée : ') + selected.split('/').pop(), 'info');
+        else     toast(T('plugin.stills.err_prefix','Erreur : ') + (r.detail || '?'), 'error');
         setTimeout(refresh, 300);
-      }catch(e){ toast('Erreur réseau','error'); }
+      }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
     }
 
     async function refresh(){
       try{
         const s = await (await api('/state')).json();
         if(s.file && !selected){ selected = s.file; setFit(s.fit || 'native'); }
-        status.textContent = `${s.file ? ('image: ' + s.file.split('/').pop()) : 'aucune image'}`
+        status.textContent = `${s.file ? (T('plugin.stills.img_prefix','image: ') + s.file.split('/').pop()) : T('plugin.stills.no_img','aucune image')}`
           + ` · ${s.width||0}×${s.height||0} · ${s.fps||0} fps`
           + ` · Fill:${s.fill_shm||'—'} Key:${s.key_shm||'—'} · v${s.plugin_version}`;
-      }catch(e){ status.textContent = 'état indisponible'; }
+      }catch(e){ status.textContent = T('plugin.stills.state_na','état indisponible'); }
     }
 
     $('.stl-folder').onchange = loadImages;
