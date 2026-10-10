@@ -1,7 +1,13 @@
 {
-  "version": "0.15.0",
-  "date": "2026-08-02",
+  "version": "0.16.0",
+  "date": "2026-10-10",
   "changes": {
+    "Couleurs justes en HD, sortie supervisée (0.16.0)": [
+      "★ Matrice RGB → YUV en BT.709 plage studio — celle qu'ANNONCE le flowDef. Elle était en BT.601 en dur : sur toute sortie HD, rouges et verts systématiquement décalés, sans aucune trace. Vérifié : blanc 235/128/128, rouge 63/102/240, vert 173/42/26, bleu 32/240/118 (références BT.709 8 bits).",
+      "Chroma sous-échantillonnée par MOYENNE au lieu de prendre un pixel sur deux : la décimation crénelait les contours colorés (texte, logos).",
+      "Entrelacé : les deux champs de l'image FIXE sont calculés une fois par image chargée, plus à chaque trame (l'éclatement coûte ~45 ms par plan de 1080i 10 bits). 25,0 i/s mesurés au banc en 1080i25 et 1080p25.",
+      "Thread de sortie supervisé : relance après exception (compteur `feeder_restarts` sur :8080) au lieu d'une sortie figée avec un conteneur « up »."
+    ],
     "Cadence rétablie : la mire livrait la MOITIÉ de sa cadence (0.15.0)": [
       "CORRECTIF : `next_index(lookahead=2)` puis sommeil jusqu'à l'échéance de CETTE trame divisait la cadence par deux, en silence. L'avance est consommée PAR LE SOMMEIL — on se réveille AU créneau visé, donc l'appel suivant repart d'une grille déjà avancée de 2 et lui rajoute 2 : la tête avance de 2 créneaux par tour. Passé à `lookahead=1`.",
       "MESURÉ le 2026-08-02 sur cinq nœuds : 25,0 fps pile pour 50 demandés sur dell-1 et dl-380, 16,7 (= 50/3, un créneau de débordement) sur les trois R620 — avec 8 ms de rendu pour 20 ms de budget, donc largement la place. Ce n'était pas un plafond de coût mais un décalage d'index.",

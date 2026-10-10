@@ -280,18 +280,28 @@ def _list_images(folder):
     return out
 
 
-# ─── conversions vers YUV420p (BT.601 studio, cf. color_corrector) ───────────
+# ─── conversion RGB → YUV planar : BT.709 plage studio ───────────────────────────
+# BT.709 parce que c'est ce qu'ANNONCE le flowDef (bobimxl.Writer, colorspace="BT709" par défaut,
+# non surchargé ici). Jusqu'en 0.15.0 la matrice était BT.601 en dur : sur une sortie HD, rouges et
+# verts décalés systématiquement, sans aucune trace. Coefficients dérivés de Kr = 0,2126,
+# Kb = 0,0722 sur 8 bits studio (Y 16-235, C 16-240), puis mis à l'échelle de la profondeur.
 def _rgb_to_yuv420(rgb):
-    """rgb uint8 (H,W,3) → bytes Y + U + V (4:2:0)."""
+    """rgb uint8 (H,W,3) → bytes Y + U + V au sous-échantillonnage du flux (CHROMA)."""
     r = rgb[:, :, 0].astype(np.float32)
     g = rgb[:, :, 1].astype(np.float32)
     b = rgb[:, :, 2].astype(np.float32)
-    y = ( 0.257 * r + 0.504 * g + 0.098 * b + 16.0)
-    u = (-0.148 * r - 0.291 * g + 0.439 * b + 128.0)
-    v = ( 0.439 * r - 0.368 * g - 0.071 * b + 128.0)
+    y = ( 0.18259 * r + 0.61423 * g + 0.06201 * b + 16.0)
+    u = (-0.10064 * r - 0.33857 * g + 0.43922 * b + 128.0)
+    v = ( 0.43922 * r - 0.39894 * g - 0.04027 * b + 128.0)
+    # Chroma par MOYENNE des pixels regroupés, pas un sur deux : la décimation crénelait les
+    # contours colorés (texte, logos) — précisément le contenu d'une image fixe.
+    h, w = u.shape
+    if _CH > 1 or _CW > 1:
+        u = u[:h - h % _CH, :w - w % _CW].reshape(h // _CH, _CH, w // _CW, _CW).mean(axis=(1, 3))
+        v = v[:h - h % _CH, :w - w % _CW].reshape(h // _CH, _CH, w // _CW, _CW).mean(axis=(1, 3))
     y_u8 = np.clip(y * _SCALE, 0, _MAXV).astype(_NP_DT)
-    u_u8 = np.clip(u[::_CH, ::_CW] * _SCALE, 0, _MAXV).astype(_NP_DT)
-    v_u8 = np.clip(v[::_CH, ::_CW] * _SCALE, 0, _MAXV).astype(_NP_DT)
+    u_u8 = np.clip(u * _SCALE, 0, _MAXV).astype(_NP_DT)
+    v_u8 = np.clip(v * _SCALE, 0, _MAXV).astype(_NP_DT)
     return y_u8.tobytes() + u_u8.tobytes() + v_u8.tobytes()
 
 def _alpha_to_yuv420(alpha):
@@ -371,6 +381,9 @@ def feeder():
             % ("entrelacé" if INTERLACED else "hauteur %d sans diviseur" % HEIGHT)), "info")
     win_cnt = 0; win_start = time.time()
     period = FPS_DEN / FPS_NUM
+    # Champs mis en CACHE : l'image est FIXE, l'éclater à chaque trame (deux fois ~45 ms en 1080i
+    # 10 bits pour 40 ms de budget) faisait rater des créneaux. On ne ré-éclate que si l'image change.
+    _fields_src = (None, None); _fields = None
 
     def _emit(w, payload, idx):
         _, gi, view = w.open_grain(index=idx)
@@ -396,7 +409,9 @@ def feeder():
             fb = frames["fill"]; kb = frames["key"]
         if INTERLACED:
             # éclate la TRAME en 2 champs → index CHAMP (pair = 1er champ) = 2*trame, 2*trame+1
-            f0, f1 = _split_fields(fb); k0, k1 = _split_fields(kb)
+            if _fields_src[0] is not fb or _fields_src[1] is not kb:
+                _fields = (_split_fields(fb), _split_fields(kb)); _fields_src = (fb, kb)
+            (f0, f1), (k0, k1) = _fields
             fi0 = (2 * idx) if idx is not None else None
             fi1 = (2 * idx + 1) if idx is not None else None
             _emit(fill_w, f0, fi0); _emit(key_w, k0, fi0)
@@ -530,7 +545,22 @@ except Exception:
 
 threading.Thread(target=lambda: HTTPServer(("0.0.0.0", 8080), MetricsHandler).serve_forever(), daemon=True).start()
 threading.Thread(target=lambda: HTTPServer(("0.0.0.0", 8082), ControlHandler).serve_forever(), daemon=True).start()
-threading.Thread(target=feeder, daemon=True).start()
+def _supervised(fn):
+    """Relance le feeder s'il lève : une exception tuait le thread sans un mot, la sortie se
+    figeait et le conteneur restait « up ». Compteur `feeder_restarts` publié sur :8080."""
+    def _run():
+        while True:
+            try:
+                fn()
+            except Exception:
+                import traceback
+                log("%s : exception — relance dans 1 s\n%s" % (fn.__name__, traceback.format_exc()), "error")
+                with metrics_lock:
+                    metrics["feeder_restarts"] = metrics.get("feeder_restarts", 0) + 1
+            time.sleep(1)
+    threading.Thread(target=_run, name=fn.__name__, daemon=True).start()
+
+_supervised(feeder)
 
 # Rendu initial si une image est déjà configurée au déploiement.
 if (state["file"] or "").strip():
