@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
     "section": "medias",
@@ -34,7 +34,8 @@
     "fps": 25,
     "media_root": "/mnt/media",
     "genlock": true,
-    "log_level": "info"
+    "log_level": "info",
+    "transition_ms": 0
   },
   "media_volume": true,
   "wiring": {
@@ -58,7 +59,8 @@
       "/images",
       "/thumb",
       "/select",
-      "/log_level"
+      "/log_level",
+      "/transition"
     ],
     "read_endpoints": [
       "/state"
@@ -76,6 +78,13 @@
           "type": "text",
           "options_endpoint": "/images",
           "options_path": "images"
+        },
+        {
+          "key": "fade_ms",
+          "label": "Fondu (ms, vide = durée par défaut, 0 = coupe)",
+          "type": "number",
+          "min": 0,
+          "max": 10000
         }
       ],
       "feedback": {
@@ -113,6 +122,21 @@
           ]
         }
       ]
+    },
+    {
+      "id": "transition",
+      "label": "Durée de fondu par défaut",
+      "endpoint": "/transition",
+      "params": [
+        {
+          "key": "ms",
+          "label": "Durée (ms, 0 = coupe franche)",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        }
+      ]
     }
   ],
   "state": [
@@ -122,6 +146,20 @@
       "endpoint": "/state",
       "path": "file",
       "type": "text"
+    },
+    {
+      "id": "fading",
+      "label": "Fondu en cours",
+      "endpoint": "/state",
+      "path": "fading",
+      "type": "bool"
+    },
+    {
+      "id": "transition_ms",
+      "label": "Fondu par défaut (ms)",
+      "endpoint": "/state",
+      "path": "transition_ms",
+      "type": "number"
     }
   ],
   "param_tree": {
@@ -164,6 +202,20 @@
         }
       },
       {
+        "label": "Transition",
+        "endpoint": "/transition",
+        "fields": {
+          "ms": {
+            "label": "Fondu par défaut (ms)",
+            "type": "number",
+            "min": 0,
+            "max": 10000,
+            "default": 0,
+            "path": "transition_ms"
+          }
+        }
+      },
+      {
         "label": "Journal (diagnostic)",
         "endpoint": "/log_level",
         "fields": {
@@ -184,6 +236,16 @@
     ]
   },
   "config_schema": [
+    {
+      "key": "transition_ms",
+      "type": "number",
+      "label": "Fondu entre deux images (ms)",
+      "help": "Durée du fondu enchaîné quand on change d'image (remplissage ET clé). 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »).",
+      "min": 0,
+      "max": 10000,
+      "default": 0,
+      "scope": "user"
+    },
     {
       "key": "slice_mode",
       "hidden": true,

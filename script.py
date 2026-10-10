@@ -195,20 +195,20 @@ def _emit_grain_sliced(w, gi, vw, data):
     finally:
         w.commit(gi, valid_slices=None)
 
-def _split_fields(full_b):
-    """TRAME planar pleine → (champ_1er, champ_2nd). tff → 1er champ = lignes paires ; bff = impaires.
-    Renvoie les 2 grains-champs prêts à écrire (octets planar demi-hauteur)."""
-    bff = FIELD_ORDER == "bff"
-    a = bytearray(); b = bytearray(); off = 0
+def _write_field(vw, src, parity):
+    """Copie le champ `parity` (0 = lignes paires) de la TRAME planar `src` (numpy uint8) DANS la
+    vue du grain-champ `vw` : une copie strided par plan. L'ancien `_split_fields` (tobytes +
+    concaténation + recopie, ~45 ms par image en 1080i 10 bits) tournait dans le thread de sortie
+    au premier tick après un changement d'image : 15 créneaux sautés sur 10 changements, mesuré au
+    banc le 2026-10-10 — et il aurait tourné à CHAQUE trame d'un fondu."""
+    off = doff = 0
     for (psz, rb) in _PLANES:
-        pl = np.frombuffer(full_b, dtype=np.uint8, count=psz, offset=off).reshape(-1, rb)
-        ev = pl[0::2]; od = pl[1::2]                 # lignes paires / impaires
-        if bff:                                      # bottom (impaires) émis en 1er
-            a += od.tobytes(); b += ev.tobytes()
-        else:                                        # top (paires) émis en 1er
-            a += ev.tobytes(); b += od.tobytes()
-        off += psz
-    return bytes(a), bytes(b)
+        rows = psz // rb
+        frows = (rows - parity + 1) // 2
+        dst = vw[doff:doff + frows * rb]
+        if dst.size == frows * rb:
+            dst.reshape(frows, rb)[:] = src[off:off + psz].reshape(rows, rb)[parity::2]
+        off += psz; doff += frows * rb
 
 FILL_SHM = HOSTNAME
 KEY_SHM  = HOSTNAME + "_key"
@@ -229,6 +229,9 @@ state = {{
     "x":      float(CONFIG.get("x") or 0),      # décalage % de la largeur (centré)
     "y":      float(CONFIG.get("y") or 0),      # décalage % de la hauteur (centré)
     "size":   float(CONFIG.get("size") or 100), # échelle %
+    # Fondu entre deux images (ms) ; 0 = coupe franche (comportement historique). Défaut du
+    # réglage `transition_ms`, surchargé à chaque /select par `fade_ms`, ou à chaud par /transition.
+    "transition_ms": max(0.0, float(CONFIG.get("transition_ms") or 0)),
 }}
 
 _BLACK_B = (16 << (BIT_DEPTH - 8)).to_bytes(_BPS, "little")   # Y noir studio (16/64/256)
@@ -240,7 +243,8 @@ def _black_key():
     return (_KEY0_B * (WIDTH * HEIGHT)) + (_NEUT_B * (2 * UV_W * UV_H))
 
 frames_lock = threading.Lock()
-frames = {{"fill": _black_fill(), "key": _black_key()}}
+# fade : fondu en cours (None = aucun) — écarts précalculés, nombre de trames, trame courante.
+frames = {{"fill": _black_fill(), "key": _black_key(), "fade": None}}
 
 metrics_lock = threading.Lock()
 metrics = {{"fps": 0.0, "frame_index": 0, "file": "",
@@ -313,11 +317,94 @@ def _alpha_to_yuv420(alpha):
 
 
 # ─── rendu de l'image courante → buffers Fill/Key ────────────────────────────
-def _render(file, fit, x, y, size):
+# ── Fondu : l'écart (nouvelle − ancienne) est calculé UNE fois, en float32, au départ du fondu ;
+# chaque trame ne coûte plus qu'un a + d·w, découpé en bandes sur 3 threads (numpy relâche le GIL
+# dans ses boucles). Mesuré : ~5,5 ms par plan 1080 10 bits 4:2:2, contre ~17 ms en int32 alloué
+# à chaque trame — qui ne tenait pas les 20 ms d'une trame à 50 i/s (250 créneaux sautés sur dix
+# fondus, banc du 2026-10-10).
+from concurrent.futures import ThreadPoolExecutor
+# Bandes = cœurs disponibles − 1 (un cœur reste au thread de sortie), plafonné à 3. Mesuré à
+# 1080p50 avec des fondus de 500 ms : sans épinglage (cas réel de stills, qui ne déclare pas de
+# profil de cœurs) 3 bandes → 0 créneau manqué ; épinglé sur 3 cœurs, 3 bandes → 6 à 57 manqués
+# sur dix fondus (le thread de sortie se fait préempter), 2 bandes → 1.
+try:
+    _NCPU = len(os.sched_getaffinity(0))
+except Exception:
+    _NCPU = os.cpu_count() or 2
+_FADE_BANDS = max(1, min(3, _NCPU - 1))
+_FADE_POOL = ThreadPoolExecutor(max_workers=_FADE_BANDS, thread_name_prefix="fondu")
+
+
+def _prep_fade(prev_bytes, new_bytes):
+    """Écart (nouvelle − ancienne) en float32, préparé PAR BANDES sur le pool : d'un bloc, la
+    conversion de deux images de 8 Mo tenait le GIL assez longtemps pour faire sauter 2-3
+    créneaux au DÉPART de chaque fondu à 50 i/s."""
+    pv = np.frombuffer(prev_bytes, dtype=_NP_DT); nv = np.frombuffer(new_bytes, dtype=_NP_DT)
+    n = pv.size; step = n // _FADE_BANDS
+    a = np.empty(n, np.float32); d = np.empty(n, np.float32)
+    def _band(i):
+        sl = slice(i * step, (i + 1) * step if i < _FADE_BANDS - 1 else n)
+        np.copyto(a[sl], pv[sl]); np.copyto(d[sl], nv[sl]); np.subtract(d[sl], a[sl], out=d[sl])
+    list(_FADE_POOL.map(_band, range(_FADE_BANDS)))
+    return (a, d, np.empty(n, np.float32), np.empty(n, _NP_DT))
+
+
+def _mix_prepped(pr, w):
+    """a + d·w arrondi, à la profondeur du flux. Rend une vue uint8 d'un tampon RÉUTILISÉ : la
+    copier (bytes) si elle doit survivre à la trame suivante."""
+    a, d, buf, out = pr
+    n = a.size; step = n // _FADE_BANDS
+    def _band(i):
+        sl = slice(i * step, (i + 1) * step if i < _FADE_BANDS - 1 else n)
+        np.multiply(d[sl], w, out=buf[sl]); np.add(buf[sl], a[sl], out=buf[sl])
+        np.add(buf[sl], 0.5, out=buf[sl]); np.copyto(out[sl], buf[sl], casting="unsafe")
+    list(_FADE_POOL.map(_band, range(_FADE_BANDS)))
+    return out.view(np.uint8)
+
+
+def _on_air(snap, private=False):
+    """(fill, key) à l'antenne pour l'instantané `snap` de frames (pris sous verrou). `private` :
+    calcul dans des tampons À SOI — sinon un appel hors du thread de sortie écrirait dans les
+    tampons que celui-ci est en train de publier."""
+    fd = snap.get("fade")
+    if not fd:
+        return snap["fill"], snap["key"]
+    w = min(1.0, (fd["i"] + 1) / float(fd["n"]))
+    own = (lambda pr: (pr[0], pr[1], np.empty_like(pr[2]), np.empty_like(pr[3]))) if private \
+        else (lambda pr: pr)
+    f = _mix_prepped(own(fd["f"]), w)
+    k = snap["key"] if fd["k"] is None else _mix_prepped(own(fd["k"]), w)
+    return f, k
+
+
+def _set_image(fill_bytes, key_bytes, fade_ms):
+    """Remplace l'image à l'antenne — d'un coup, ou par un fondu de `fade_ms` démarrant à la
+    trame suivante. Remplissage ET clé changent ensemble, sous le même verrou ; tout le CALCUL se
+    fait hors verrou (le thread de sortie l'attend à chaque trame)."""
+    n = int(round(max(0.0, float(fade_ms or 0)) / 1000.0 * FPS_NUM / FPS_DEN))
+    fade = None
+    if n >= 2:
+        with frames_lock:
+            snap = dict(frames); snap["fade"] = dict(frames["fade"]) if frames["fade"] else None
+        # Un fondu interrompu repart de ce qui est À L'ANTENNE maintenant, pas de son départ.
+        cur_f, cur_k = _on_air(snap, private=True)
+        cur_f, cur_k = bytes(cur_f), bytes(cur_k)
+        fade = {{"f": _prep_fade(cur_f, fill_bytes),
+                 # clé identique (images opaques : cas courant) → on ne mélange que le remplissage
+                 "k": None if cur_k == key_bytes else _prep_fade(cur_k, key_bytes),
+                 "n": n, "i": 0}}
+    with frames_lock:
+        frames["fade"] = fade
+        frames["fill"] = fill_bytes; frames["key"] = key_bytes
+
+
+def _render(file, fit, x, y, size, fade_ms=None):
+    if fade_ms is None:
+        with state_lock:
+            fade_ms = state["transition_ms"]
     full = _safe_join(file)
     if not full or not os.path.isfile(full):
-        with frames_lock:
-            frames["fill"] = _black_fill(); frames["key"] = _black_key()
+        _set_image(_black_fill(), _black_key(), fade_ms)
         return False, "fichier introuvable"
     try:
         img = Image.open(full).convert("RGBA")
@@ -354,8 +441,7 @@ def _render(file, fit, x, y, size):
 
     fill_bytes = _rgb_to_yuv420(canvas[:, :, :3])
     key_bytes  = _alpha_to_yuv420(canvas[:, :, 3])
-    with frames_lock:
-        frames["fill"] = fill_bytes; frames["key"] = key_bytes
+    _set_image(fill_bytes, key_bytes, fade_ms)
     return True, "ok"
 
 
@@ -381,9 +467,10 @@ def feeder():
             % ("entrelacé" if INTERLACED else "hauteur %d sans diviseur" % HEIGHT)), "info")
     win_cnt = 0; win_start = time.time()
     period = FPS_DEN / FPS_NUM
-    # Champs mis en CACHE : l'image est FIXE, l'éclater à chaque trame (deux fois ~45 ms en 1080i
-    # 10 bits pour 40 ms de budget) faisait rater des créneaux. On ne ré-éclate que si l'image change.
-    _fields_src = (None, None); _fields = None
+    # Créneaux de grille MANQUÉS, comptés ICI, par celui qui écrit (un écart d'index entre deux
+    # trames successives) : c'est la seule mesure qui ne dépend pas d'un observateur qui pourrait
+    # lui-même prendre du retard. Publié sur :8080 (`slots_missed`) — à comparer à l'intention.
+    last_idx = None; missed = 0
 
     def _emit(w, payload, idx):
         _, gi, view = w.open_grain(index=idx)
@@ -402,20 +489,31 @@ def feeder():
             # Rattrapage d'un creux d'ordonnancement inclus (on repart de la grille courante à
             # chaque appel).
             idx = fill_w.next_index(lookahead=1)
+            if last_idx is not None and idx > last_idx + 1:
+                missed += idx - last_idx - 1
+            last_idx = idx
             bobimxl.sleep_until_tai(fill_w.index_time_ns(idx))
         else:
             t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
         with frames_lock:
-            fb = frames["fill"]; kb = frames["key"]
+            snap = {{"fill": frames["fill"], "key": frames["key"],
+                     "fade": dict(frames["fade"]) if frames["fade"] else None}}
+            if frames["fade"] is not None:
+                frames["fade"]["i"] += 1
+                if frames["fade"]["i"] >= frames["fade"]["n"]:
+                    frames["fade"] = None
+        fb, kb = _on_air(snap)                 # mélange HORS verrou
         if INTERLACED:
             # éclate la TRAME en 2 champs → index CHAMP (pair = 1er champ) = 2*trame, 2*trame+1
-            if _fields_src[0] is not fb or _fields_src[1] is not kb:
-                _fields = (_split_fields(fb), _split_fields(kb)); _fields_src = (fb, kb)
-            (f0, f1), (k0, k1) = _fields
+            fsrc = np.frombuffer(fb, dtype=np.uint8); ksrc = np.frombuffer(kb, dtype=np.uint8)
+            first = 1 if FIELD_ORDER == "bff" else 0
             fi0 = (2 * idx) if idx is not None else None
             fi1 = (2 * idx + 1) if idx is not None else None
-            _emit(fill_w, f0, fi0); _emit(key_w, k0, fi0)
-            _emit(fill_w, f1, fi1); _emit(key_w, k1, fi1)
+            for fi, par in ((fi0, first), (fi1, 1 - first)):
+                for w_, src_ in ((fill_w, fsrc), (key_w, ksrc)):
+                    _, gi_, vw_ = w_.open_grain(index=fi)
+                    _write_field(vw_, src_, par)
+                    w_.commit(gi_)
             gidx = fi1 if fi1 is not None else fill_w._counter - 1
         elif V_SLICE_H:
             # MODE TRANCHE : émission par bandes des trames déjà rendues (commit progressif).
@@ -437,6 +535,7 @@ def feeder():
         if el >= 1.0:
             with metrics_lock:
                 metrics["fps"] = round(win_cnt / el, 1); metrics["frame_index"] = gidx
+                metrics["slots_missed"] = missed
             win_cnt = 0; win_start = time.time()
         if not GENLOCK:
             dt = period - (time.time() - t0)
@@ -479,6 +578,7 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "fill_shm": FILL_SHM, "key_shm": KEY_SHM,
                        "width": WIDTH, "height": HEIGHT, "scan": SCAN,
                        "log_level": LOG_LEVEL,   # lisible en condition de macro
+                       "fading": frames["fade"] is not None,   # fondu en cours (condition de macro)
                        "mxl_lib": _mxl_lib_state()}})
             self._json(200, s)
         elif u.path == "/folders":
@@ -516,6 +616,7 @@ class ControlHandler(BaseHTTPRequestHandler):
         if u.path == "/select":
             b = self._read()
             with state_lock:
+                prev_file = state["file"]
                 if "folder" in b: state["folder"] = (b.get("folder") or "").strip()
                 state["file"] = (b.get("file") or state["file"] or "").strip()
                 state["fit"]  = b.get("fit") or state["fit"]
@@ -523,10 +624,30 @@ class ControlHandler(BaseHTTPRequestHandler):
                 state["y"]    = float(b.get("y", state["y"]) or 0)
                 state["size"] = float(b.get("size", state["size"]) or 100)
                 s = dict(state)
-            ok, detail = _render(s["file"], s["fit"], s["x"], s["y"], s["size"])
+            fade = b.get("fade_ms")
+            try:
+                fade = None if fade is None or fade == "" else max(0.0, min(10000.0, float(fade)))
+            except (TypeError, ValueError):
+                return self._json(400, {{"error": "fade_ms : nombre de millisecondes attendu"}})
+            # Le fondu par défaut ne s'applique qu'à un CHANGEMENT d'image : repositionner (X/Y,
+            # taille, adaptation — y compris depuis le param_tree d'une macro) reste une coupe,
+            # sinon chaque cran de réglage fondrait. `fade_ms` explicite prime toujours.
+            if fade is None and s["file"] == prev_file:
+                fade = 0.0
+            ok, detail = _render(s["file"], s["fit"], s["x"], s["y"], s["size"], fade_ms=fade)
             with metrics_lock:
                 metrics["file"] = s["file"] if ok else metrics["file"]
             self._json(200 if ok else 400, {{"ok": ok, "detail": detail, "file": s["file"]}})
+        elif u.path == "/transition":
+            # Durée de fondu PAR DÉFAUT, à chaud (0 = coupe franche). Le réglage persistant est
+            # `transition_ms` du config_schema.
+            b = self._read()
+            try:
+                v = max(0.0, min(10000.0, float(b.get("ms", b.get("transition_ms", 0)) or 0)))
+            except (TypeError, ValueError):
+                return self._json(400, {{"error": "ms : nombre attendu"}})
+            with state_lock: state["transition_ms"] = v
+            self._json(200, {{"ok": True, "transition_ms": v}})
         elif u.path == "/log_level":
             # Verbosité À CHAUD (pas de redéploiement) : instruction d'incident. Le niveau
             # PERSISTANT reste le champ `log_level` du config_schema ; celui-ci est volatil.

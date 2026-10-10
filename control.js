@@ -94,6 +94,7 @@ window.MXLPlugins["stills"] = {
       try{
         const s = await (await api('/state')).json();
         if(s.file && !selected){ selected = s.file; setFit(s.fit || 'native'); }
+        const fe = $('.stl-fade'); if(fe && fe !== document.activeElement) fe.value = Math.round(s.transition_ms || 0);
         status.textContent = `${s.file ? (T('plugin.stills.img_prefix','image: ') + s.file.split('/').pop()) : T('plugin.stills.no_img','aucune image')}`
           + ` · ${s.width||0}×${s.height||0} · ${s.fps||0} fps`
           + ` · Fill:${s.fill_shm||'—'} Key:${s.key_shm||'—'} · v${s.plugin_version}`;
@@ -103,6 +104,10 @@ window.MXLPlugins["stills"] = {
     $('.stl-folder').onchange = loadImages;
     $('.stl-refresh').onclick = loadFolders;
     $('.stl-apply').onclick = apply;
+    // Durée de fondu par défaut, à chaud. Elle ne s'applique qu'aux CHANGEMENTS d'image : régler
+    // la position reste une coupe (règle côté conteneur).
+    const fadeEl = $('.stl-fade');
+    if(fadeEl) fadeEl.onchange = () => api('/transition', {ms: Math.max(0, Math.min(10000, parseFloat(fadeEl.value) || 0))});
     el.querySelectorAll('input[name="stl-fit"]').forEach(r => r.onchange = apply);
     ['.stl-x','.stl-y','.stl-size'].forEach(s => { const e = $(s); if(e) e.onchange = apply; });
 

@@ -1,7 +1,13 @@
 {
-  "version": "0.16.0",
+  "version": "0.17.0",
   "date": "2026-10-10",
   "changes": {
+    "Fondu entre deux images, changement sans à-coup en entrelacé (0.17.0)": [
+      "★ FONDU optionnel au changement d'image (remplissage ET clé) : réglage `transition_ms` (0 = coupe franche, défaut), champ « Fondu » de l'interface, paramètre `fade_ms` de l'action « Afficher une image », action « Durée de fondu par défaut ». Ne s'applique qu'à un changement d'IMAGE : repositionner reste une coupe. Un fondu interrompu repart de ce qui est à l'antenne.",
+      "Coût : écart précalculé une fois en float32, mélange par bandes sur les cœurs disponibles (2,4 ms par trame 1080 10 bits sur dl360-1). Mesuré au banc, dix changements chacun : 0 créneau manqué en coupe et en fondu de 500 ms à 1080i25, 1080p25 et 1080p50 (non épinglé, cas réel de stills).",
+      "Entrelacé : les champs sont copiés directement dans les grains (2 ms) — l'ancien éclatement dans le thread de sortie faisait manquer ~1,5 trame à CHAQUE changement d'image (15 créneaux sur 10 changements, mesuré).",
+      "`slots_missed` sur :8080 : créneaux de grille manqués, comptés par l'écrivain lui-même ; `fading` dans /state."
+    ],
     "Couleurs justes en HD, sortie supervisée (0.16.0)": [
       "★ Matrice RGB → YUV en BT.709 plage studio — celle qu'ANNONCE le flowDef. Elle était en BT.601 en dur : sur toute sortie HD, rouges et verts systématiquement décalés, sans aucune trace. Vérifié : blanc 235/128/128, rouge 63/102/240, vert 173/42/26, bleu 32/240/118 (références BT.709 8 bits).",
       "Chroma sous-échantillonnée par MOYENNE au lieu de prendre un pixel sur deux : la décimation crénelait les contours colorés (texte, logos).",

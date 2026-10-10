@@ -36,5 +36,7 @@
   "type.stills.cfg.slice_lines.label": "Lines per slice",
   "type.stills.cfg.slice_mode.help": "Video is published band by band on the MXL bus: downstream starts on the first band without waiting for the full frame (sub-frame latency). Interlaced or non-divisible height → falls back to whole frame. Disabled (default) = historical behaviour.",
   "type.stills.cfg.slice_mode.label": "Slice mode (sub-frame latency)",
-  "type.stills.label": "Stills"
+  "type.stills.label": "Stills",
+  "plugin.stills.fade": "Fade (ms)",
+  "plugin.stills.fade_tip": "Cross-fade duration when the image changes (0 = straight cut). Repositioning the image stays a cut."
 }
