@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
     "section": "medias",
@@ -36,7 +36,8 @@
     "media_root": "/mnt/media",
     "genlock": true,
     "log_level": "info",
-    "transition_ms": 0
+    "transition_ms": 0,
+    "take_direct": false
   },
   "media_volume": true,
   "wiring": {
@@ -61,10 +62,18 @@
       "/thumb",
       "/select",
       "/log_level",
-      "/transition"
+      "/transition",
+      "/program.jpg",
+      "/preview.jpg",
+      "/preview",
+      "/take",
+      "/cut",
+      "/take_direct"
     ],
     "read_endpoints": [
-      "/state"
+      "/state",
+      "/program.jpg",
+      "/preview.jpg"
     ]
   },
   "actions": [
@@ -138,6 +147,57 @@
           "max": 10000
         }
       ]
+    },
+    {
+      "id": "preview",
+      "label": "Mettre une image en preview",
+      "endpoint": "/preview",
+      "params": [
+        {
+          "key": "file",
+          "label": "Image",
+          "type": "text",
+          "options_endpoint": "/images",
+          "options_path": "images"
+        }
+      ],
+      "feedback": {
+        "state": "preview_file",
+        "value_from": "file"
+      }
+    },
+    {
+      "id": "take",
+      "label": "Take (preview vers antenne)",
+      "endpoint": "/take",
+      "params": [
+        {
+          "key": "fade_ms",
+          "label": "Fondu (ms, vide = durée par défaut, 0 = coupe)",
+          "type": "number",
+          "min": 0,
+          "max": 10000
+        }
+      ]
+    },
+    {
+      "id": "cut",
+      "label": "Cut (preview vers antenne, coupe franche)",
+      "endpoint": "/cut",
+      "params": []
+    },
+    {
+      "id": "take_direct",
+      "label": "Take direct (choisir = antenne)",
+      "endpoint": "/take_direct",
+      "params": [
+        {
+          "key": "enabled",
+          "label": "Activé",
+          "type": "bool",
+          "default": false
+        }
+      ]
     }
   ],
   "state": [
@@ -161,6 +221,27 @@
       "endpoint": "/state",
       "path": "transition_ms",
       "type": "number"
+    },
+    {
+      "id": "preview_file",
+      "label": "Image en preview",
+      "endpoint": "/state",
+      "path": "preview_file",
+      "type": "text"
+    },
+    {
+      "id": "program_file",
+      "label": "Image à l'antenne",
+      "endpoint": "/state",
+      "path": "program_file",
+      "type": "text"
+    },
+    {
+      "id": "take_direct",
+      "label": "Take direct",
+      "endpoint": "/state",
+      "path": "take_direct",
+      "type": "bool"
     }
   ],
   "param_tree": {
@@ -233,6 +314,18 @@
             "path": "log_level"
           }
         }
+      },
+      {
+        "label": "Mode Take",
+        "endpoint": "/take_direct",
+        "fields": {
+          "enabled": {
+            "label": "Take direct (choisir = antenne)",
+            "type": "bool",
+            "default": false,
+            "path": "take_direct"
+          }
+        }
       }
     ]
   },
@@ -245,6 +338,14 @@
       "min": 0,
       "max": 10000,
       "default": 0,
+      "scope": "user"
+    },
+    {
+      "key": "take_direct",
+      "type": "checkbox",
+      "label": "Take direct",
+      "help": "Décoché (défaut) : choisir une image la met en PREVIEW, le bouton Take l'envoie à l'antenne (avec le fondu réglé). Coché : choisir une image la met directement à l'antenne. Réglable à chaud (action « Take direct »).",
+      "default": false,
       "scope": "user"
     },
     {

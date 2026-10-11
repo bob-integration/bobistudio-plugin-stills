@@ -1,7 +1,12 @@
 {
-  "version": "0.18.0",
+  "version": "0.19.0",
   "date": "2026-10-11",
   "changes": {
+    "★ Mode Take : preview et programme côte à côte (0.19.0)": [
+      "★ En haut : l'image RÉELLEMENT à l'antenne (Programme, avec damier sous la transparence, vue Clé en option) et la PREVIEW. Choisir une image ne l'envoie plus à l'antenne : elle s'affiche en preview, avec le cadrage choisi — calculé par le plugin avec le MÊME code que la sortie (`_compose`), sans rien écrire sur le bus. Bouton TAKE (fondu réglé), CUT (coupe). Réglage « Take direct » = ancien comportement (choisir = antenne) ; défaut = mode Take.",
+      "Programme : JPEG encodé à la demande et mis en cache — jamais d'encodage en continu (`jpeg_encodes` dans /state le prouve) ; pendant un fondu, au plus une dizaine d'encodages et seulement si une page regarde.",
+      "Macros : actions « Mettre une image en preview », « Take », « Cut », « Take direct » ; `preview_file`, `program_file`, `take_direct` dans /state. Bouton Stream : ouvre la sortie dans le moniteur WebRTC pour voir un fondu en vrai."
+    ],
     "★ Bibliothèque commune : les images de la base des médias (0.18.0)": [
       "★ Le choix « Dossier » + grille de vignettes est remplacé par la bibliothèque commune (celle du Player et du Recorder) : base des médias limitée aux images, en vignettes, avec bins, recherche sur n'importe quel champ, serveurs réseau (import puis affichage) et fiche « Infos ». « Afficher » (ou double-clic) envoie l'image.",
       "Une image doit avoir une copie que ce conteneur voit (son nœud, le dossier de son projet). Les images du volume qui ne sont pas encore dans la base s'importent depuis Réglages → Médias → Base des médias."

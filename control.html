@@ -5,6 +5,27 @@
   <div class="stl-noproject-banner" style="display:none;padding:4px 10px;font-size:0.82em;background:var(--bg-elev);border-bottom:1px solid var(--border);color:var(--text-muted)">
     <span data-i18n="plugin.stills.storage_all">Stockage : tous les projets (aucun projet assigné)</span>
   </div>
+  <!-- Preview / Programme côte à côte (mode Take) -->
+  <div class="stl-pp">
+    <figure class="stl-pane stl-pane-pv">
+      <figcaption><span class="stl-tag stl-tag-pv" data-i18n="plugin.stills.preview">PREVIEW</span> <span class="stl-pv-info stl-info"></span></figcaption>
+      <div class="stl-screen"><img class="stl-pv-img" alt="" hidden><span class="stl-empty stl-pv-empty" data-i18n="plugin.stills.pv_empty">Aucune image en preview</span></div>
+    </figure>
+    <div class="stl-take-col">
+      <button type="button" class="stl-take" data-i18n="plugin.stills.take">TAKE</button>
+      <button type="button" class="stl-cut" data-i18n="plugin.stills.cut">CUT</button>
+    </div>
+    <figure class="stl-pane stl-pane-pg">
+      <figcaption><span class="stl-tag stl-tag-pg" data-i18n="plugin.stills.program">PROGRAMME</span> <span class="stl-pg-info stl-info"></span></figcaption>
+      <div class="stl-screen"><img class="stl-pg-img" alt="" hidden><span class="stl-empty stl-pg-empty" data-i18n="plugin.stills.pg_empty">Rien à l'antenne</span></div>
+    </figure>
+  </div>
+  <div class="stl-row stl-pp-opts">
+    <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
+    <label data-i18n-title="plugin.stills.view_key_tip" title="Voir la clé (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la clé</span></label>
+    <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
+  </div>
+
   <!-- Images : bibliothèque commune (static/js/media_library.js) — base des médias, limitée aux
        images, en vignettes ; « Afficher » envoie l'image. -->
   <div class="stl-lib-host"></div>
@@ -27,8 +48,6 @@
 
   <div class="stl-row">
     <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée du fondu au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.fade">Fondu (ms)</span><input type="number" class="stl-fade" value="0" step="100" min="0" max="10000"></label>
-    <button class="stl-apply" data-i18n="plugin.stills.apply">Appliquer</button>
-    <button class="stl-monitor">Monitoring</button>
   </div>
   <div class="stl-status">…</div>
 </div>

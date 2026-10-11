@@ -232,6 +232,10 @@ state = {{
     # Fondu entre deux images (ms) ; 0 = coupe franche (comportement historique). Défaut du
     # réglage `transition_ms`, surchargé à chaque /select par `fade_ms`, ou à chaud par /transition.
     "transition_ms": max(0.0, float(CONFIG.get("transition_ms") or 0)),
+    # MODE TAKE (comme un mélangeur) : choisir une image la met en PREVIEW, `/take` l'envoie à
+    # l'antenne. `take_direct` = ancien comportement (choisir = antenne). Défaut : mode Take.
+    "take_direct": _as_bool_cfg(CONFIG.get("take_direct"), default=False),
+    "preview": {{"file": "", "fit": "native", "x": 0.0, "y": 0.0, "size": 100.0}},
 }}
 
 _BLACK_B = (16 << (BIT_DEPTH - 8)).to_bytes(_BPS, "little")   # Y noir studio (16/64/256)
@@ -377,7 +381,7 @@ def _on_air(snap, private=False):
     return f, k
 
 
-def _set_image(fill_bytes, key_bytes, fade_ms):
+def _set_image(fill_bytes, key_bytes, fade_ms, rgba=None, meta=None):
     """Remplace l'image à l'antenne — d'un coup, ou par un fondu de `fade_ms` démarrant à la
     trame suivante. Remplissage ET clé changent ensemble, sous le même verrou ; tout le CALCUL se
     fait hors verrou (le thread de sortie l'attend à chaque trame)."""
@@ -396,25 +400,29 @@ def _set_image(fill_bytes, key_bytes, fade_ms):
     with frames_lock:
         frames["fade"] = fade
         frames["fill"] = fill_bytes; frames["key"] = key_bytes
+        # Le JPEG « programme » dérive de ce qui vient d'être posé ; ancien état gardé pour le fondu.
+        with prog_lock:
+            prog["prev"] = prog["rgba"]; prog["rgba"] = rgba; prog["meta"] = meta
+            prog["since"] = time.time(); prog["gen"] += 1
 
 
-def _render(file, fit, x, y, size, fade_ms=None):
-    if fade_ms is None:
-        with state_lock:
-            fade_ms = state["transition_ms"]
+def _compose(file, fit, x, y, size):
+    """Le CADRAGE — SEUL calcul de l'image de sortie, partagé par la sortie (`_render`) et la
+    preview (`_do_preview`) : ce qu'on voit en preview EST ce qui passera, au pixel près.
+    Rend (canvas RGBA uint8 (HEIGHT,WIDTH,4), meta) ou (None, message d'erreur)."""
     full = _safe_join(file)
     if not full or not os.path.isfile(full):
-        _set_image(_black_fill(), _black_key(), fade_ms)
-        return False, "fichier introuvable"
+        return None, "fichier introuvable"
     try:
-        img = Image.open(full).convert("RGBA")
+        img = Image.open(full)
+        src_fmt = img.format or ""
+        img = img.convert("RGBA")
     except Exception as e:
-        return False, "décodage : %s" % e
+        return None, "décodage : %s" % e
     w0, h0 = img.size
     if w0 <= 0 or h0 <= 0:
-        return False, "image vide"
+        return None, "image vide"
 
-    # taille de base selon le mode de cadrage
     if fit == "stretch":
         bw, bh = WIDTH, HEIGHT
     elif fit == "fit":
@@ -429,7 +437,6 @@ def _render(file, fit, x, y, size, fade_ms=None):
         img = img.resize((tw, th), RESAMPLE)
     src = np.asarray(img)                              # (th,tw,4) uint8
 
-    # canvas W×H transparent : image centrée + décalage X/Y (% du cadre, origine centre)
     canvas = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
     ox = int(round((WIDTH  - tw) / 2 + (float(x or 0) / 100.0) * WIDTH))
     oy = int(round((HEIGHT - th) / 2 + (float(y or 0) / 100.0) * HEIGHT))
@@ -438,14 +445,121 @@ def _render(file, fit, x, y, size, fade_ms=None):
     if dx1 > dx0 and dy1 > dy0:                         # portion visible (clipping)
         sx0, sy0 = dx0 - ox, dy0 - oy
         canvas[dy0:dy1, dx0:dx1, :] = src[sy0:sy0 + (dy1 - dy0), sx0:sx0 + (dx1 - dx0), :]
+    meta = {{"file": file, "name": os.path.basename(file), "src_w": w0, "src_h": h0,
+             "format": src_fmt, "alpha": bool(src[:, :, 3].min() < 255),
+             "fit": fit, "x": float(x or 0), "y": float(y or 0), "size": float(size or 100),
+             "drawn_w": tw, "drawn_h": th, "out_w": WIDTH, "out_h": HEIGHT}}
+    return canvas, meta
 
+
+# ─── Programme / preview : JPEG à la demande ─────────────────────────────────
+# Aucun encodage en continu : on encode UNE fois quand quelqu'un le demande, on met en cache, et
+# on ne ré-encode qu'après un changement (`gen`). Pendant un fondu, le poids est quantifié par
+# dixièmes (au plus ~10 encodages par fondu, seulement si l'UI regarde).
+PV_W = 640
+prog_lock = threading.Lock()
+prog = {{"gen": 0, "rgba": None, "prev": None, "meta": None, "since": None}}
+prev_lock = threading.Lock()
+prev = {{"gen": 0, "rgba": None, "meta": None, "error": ""}}
+_jpeg_cache = {{}}          # (origine, gen, vue, pas de fondu) → bytes ; une entrée par origine+vue
+_jpeg_lock = threading.Lock()
+_jpeg_stats = {{"encodes": 0}}
+_checker_cache = {{}}
+
+
+def _checker(w, h):
+    k = (w, h)
+    if k not in _checker_cache:
+        yy, xx = np.mgrid[0:h, 0:w]
+        v = np.where(((yy // 8) + (xx // 8)) % 2 == 0, 90, 140).astype(np.uint8)
+        _checker_cache[k] = Image.fromarray(np.dstack([v, v, v, np.full_like(v, 255)]), "RGBA")
+    return _checker_cache[k]
+
+
+def _small(rgba):
+    """Canvas RGBA plein format → vignette PV_W de large (RGBA)."""
+    im = Image.fromarray(rgba, "RGBA")
+    return im.resize((PV_W, max(2, round(PV_W * HEIGHT / WIDTH))), Image.BILINEAR)
+
+
+def _jpeg_of(im, view):
+    """vignette RGBA → JPEG. `fill` : l'image sur un DAMIER (la transparence se voit) ;
+    `key` : l'alpha en gris (ce que porte le flux _key)."""
+    if view == "key":
+        out = im.getchannel("A").convert("RGB")
+    else:
+        out = Image.alpha_composite(_checker(*im.size), im).convert("RGB")
+    buf = io.BytesIO(); out.save(buf, "JPEG", quality=82)
+    return buf.getvalue()
+
+
+def _cached_jpeg(origin, gen, view, step, make):
+    key = (origin, view)
+    with _jpeg_lock:
+        hit = _jpeg_cache.get(key)
+        if hit and hit[0] == (gen, step):
+            return hit[1]
+    data = make()
+    with _jpeg_lock:
+        _jpeg_cache[key] = ((gen, step), data)
+        _jpeg_stats["encodes"] += 1
+    return data
+
+
+def _program_jpeg(view):
+    with prog_lock:
+        gen, cur, old, meta = prog["gen"], prog["rgba"], prog["prev"], prog["meta"]
+    with frames_lock:
+        fd = frames["fade"]
+        w = min(1.0, (fd["i"] + 1) / float(fd["n"])) if fd else None
+    step = None if w is None else int(round(w * 10))
+    def make():
+        black = np.zeros((HEIGHT, WIDTH, 4), np.uint8)
+        c = cur if cur is not None else black
+        if step is None:
+            return _jpeg_of(_small(c), view)
+        o = old if old is not None else black
+        return _jpeg_of(Image.blend(_small(o), _small(c), step / 10.0), view)
+    return _cached_jpeg("program", gen, view, step, make)
+
+
+def _preview_jpeg(view):
+    with prev_lock:
+        gen, cur = prev["gen"], prev["rgba"]
+    if cur is None:
+        return None
+    return _cached_jpeg("preview", gen, view, None, lambda: _jpeg_of(_small(cur), view))
+
+
+def _do_preview(file, fit, x, y, size):
+    """Prépare la preview : même cadrage que la sortie, RIEN n'est écrit sur le bus."""
+    canvas, meta = _compose(file, fit, x, y, size)
+    with state_lock:
+        state["preview"] = {{"file": file, "fit": fit, "x": float(x or 0), "y": float(y or 0),
+                             "size": float(size or 100)}}
+    with prev_lock:
+        prev["gen"] += 1
+        prev["rgba"] = canvas
+        prev["meta"] = meta if canvas is not None else None
+        prev["error"] = "" if canvas is not None else meta
+    return canvas is not None, ("ok" if canvas is not None else meta)
+
+
+def _render(file, fit, x, y, size, fade_ms=None):
+    if fade_ms is None:
+        with state_lock:
+            fade_ms = state["transition_ms"]
+    canvas, meta = _compose(file, fit, x, y, size)
+    if canvas is None:
+        if meta == "fichier introuvable":
+            _set_image(_black_fill(), _black_key(), fade_ms, None, None)
+        return False, meta
     fill_bytes = _rgb_to_yuv420(canvas[:, :, :3])
     key_bytes  = _alpha_to_yuv420(canvas[:, :, 3])
-    _set_image(fill_bytes, key_bytes, fade_ms)
+    _set_image(fill_bytes, key_bytes, fade_ms, canvas, meta)
     return True, "ok"
 
 
-# ─── producteurs MXL (Fill + Key) ────────────────────────────────────────────
 def feeder():
     # Domaine MXL = $MXL_DOMAIN ou /dev/shm/mxl (sous-rép. du tmpfs bind-monté). Deux flux
     # planar nommés comme les anciens shm (les consommateurs MXL les retrouvent par le NOM).
@@ -579,6 +693,12 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "width": WIDTH, "height": HEIGHT, "scan": SCAN,
                        "log_level": LOG_LEVEL,   # lisible en condition de macro
                        "fading": frames["fade"] is not None,   # fondu en cours (condition de macro)
+                       "program_file": s.get("file", ""),      # image À L'ANTENNE
+                       "preview_file": (s.get("preview") or {{}}).get("file", ""),   # image en PREVIEW
+                       "on_air_since": prog["since"], "program_gen": prog["gen"],
+                       "program_meta": prog["meta"], "preview_meta": prev["meta"],
+                       "preview_error": prev["error"], "preview_gen": prev["gen"],
+                       "jpeg_encodes": _jpeg_stats["encodes"],   # preuve : pas d'encodage en continu
                        "mxl_lib": _mxl_lib_state()}})
             self._json(200, s)
         elif u.path == "/folders":
@@ -588,6 +708,17 @@ class ControlHandler(BaseHTTPRequestHandler):
             self._json(200, {{"images": _list_images(folder), "folder": folder}})
         elif u.path == "/thumb":
             self._serve_thumb((q.get("path") or [""])[0])
+        elif u.path in ("/program.jpg", "/preview.jpg"):
+            view = "key" if (q.get("view") or [""])[0] == "key" else "fill"
+            try:
+                data = _program_jpeg(view) if u.path == "/program.jpg" else _preview_jpeg(view)
+            except Exception as e:
+                return self._json(500, {{"error": str(e)}})
+            if data is None:
+                self.send_response(204); self.end_headers(); return
+            self.send_response(200); self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(data))); self.end_headers()
+            self.wfile.write(data)
         else:
             self._json(404, {{"error": "not found"}})
 
@@ -611,33 +742,65 @@ class ControlHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self._json(500, {{"error": str(e)}})
 
+    def _go_air(self, b, force_fade=False):
+        """Met l'image à l'ANTENNE (corps de /select, /take, /cut). Même chemin pour les trois :
+        la sortie ne connaît qu'`_render`. Un changement de cadrage de la MÊME image reste une
+        coupe (le fondu ne vaut que pour un changement d'image), sauf `force_fade` (Take/Cut,
+        où la durée est explicite)."""
+        with state_lock:
+            prev_file = state["file"]
+            if "folder" in b: state["folder"] = (b.get("folder") or "").strip()
+            state["file"] = (b.get("file") or state["file"] or "").strip()
+            state["fit"]  = b.get("fit") or state["fit"]
+            state["x"]    = float(b.get("x", state["x"]) or 0)
+            state["y"]    = float(b.get("y", state["y"]) or 0)
+            state["size"] = float(b.get("size", state["size"]) or 100)
+            s = dict(state)
+        fade = b.get("fade_ms")
+        try:
+            fade = None if fade is None or fade == "" else max(0.0, min(10000.0, float(fade)))
+        except (TypeError, ValueError):
+            return self._json(400, {{"error": "fade_ms : nombre de millisecondes attendu"}})
+        if fade is None and s["file"] == prev_file and not force_fade:
+            fade = 0.0
+        ok, detail = _render(s["file"], s["fit"], s["x"], s["y"], s["size"], fade_ms=fade)
+        with metrics_lock:
+            metrics["file"] = s["file"] if ok else metrics["file"]
+        self._json(200 if ok else 400, {{"ok": ok, "detail": detail, "file": s["file"]}})
+
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
         if u.path == "/select":
             b = self._read()
+            self._go_air(b)
+        elif u.path == "/preview":
+            b = self._read()
             with state_lock:
-                prev_file = state["file"]
-                if "folder" in b: state["folder"] = (b.get("folder") or "").strip()
-                state["file"] = (b.get("file") or state["file"] or "").strip()
-                state["fit"]  = b.get("fit") or state["fit"]
-                state["x"]    = float(b.get("x", state["x"]) or 0)
-                state["y"]    = float(b.get("y", state["y"]) or 0)
-                state["size"] = float(b.get("size", state["size"]) or 100)
-                s = dict(state)
-            fade = b.get("fade_ms")
-            try:
-                fade = None if fade is None or fade == "" else max(0.0, min(10000.0, float(fade)))
-            except (TypeError, ValueError):
-                return self._json(400, {{"error": "fade_ms : nombre de millisecondes attendu"}})
-            # Le fondu par défaut ne s'applique qu'à un CHANGEMENT d'image : repositionner (X/Y,
-            # taille, adaptation — y compris depuis le param_tree d'une macro) reste une coupe,
-            # sinon chaque cran de réglage fondrait. `fade_ms` explicite prime toujours.
-            if fade is None and s["file"] == prev_file:
-                fade = 0.0
-            ok, detail = _render(s["file"], s["fit"], s["x"], s["y"], s["size"], fade_ms=fade)
-            with metrics_lock:
-                metrics["file"] = s["file"] if ok else metrics["file"]
-            self._json(200 if ok else 400, {{"ok": ok, "detail": detail, "file": s["file"]}})
+                pv = dict(state["preview"])
+                for k in ("file", "fit"):
+                    if k in b and b[k] is not None: pv[k] = str(b[k]).strip()
+                for k in ("x", "y", "size"):
+                    if k in b and b[k] not in (None, ""):
+                        try: pv[k] = float(b[k])
+                        except (TypeError, ValueError): return self._json(400, {{"error": "%s : nombre attendu" % k}})
+            if not pv["file"]:
+                return self._json(400, {{"ok": False, "detail": "aucune image"}})
+            ok, detail = _do_preview(pv["file"], pv["fit"], pv["x"], pv["y"], pv["size"])
+            self._json(200 if ok else 400, {{"ok": ok, "detail": detail, "preview": pv}})
+        elif u.path in ("/take", "/cut"):
+            b = self._read()
+            with state_lock: pv = dict(state["preview"])
+            if not pv["file"]:
+                return self._json(400, {{"ok": False, "detail": "rien en preview"}})
+            body = dict(pv)
+            body["fade_ms"] = 0 if u.path == "/cut" else b.get("fade_ms")
+            self._go_air(body, force_fade=True)
+        elif u.path == "/take_direct":
+            b = self._read()
+            v = b.get("enabled", b.get("take_direct"))
+            v = _as_bool_cfg(v, default=False)
+            with state_lock: state["take_direct"] = v
+            self._json(200, {{"ok": True, "take_direct": v}})
         elif u.path == "/transition":
             # Durée de fondu PAR DÉFAUT, à chaud (0 = coupe franche). Le réglage persistant est
             # `transition_ms` du config_schema.
@@ -687,6 +850,7 @@ _supervised(feeder)
 if (state["file"] or "").strip():
     try:
         _render(state["file"], state["fit"], state["x"], state["y"], state["size"])
+        _do_preview(state["file"], state["fit"], state["x"], state["y"], state["size"])
     except Exception as e:
         log("render initial: %s" % (e,), "warning")
 
