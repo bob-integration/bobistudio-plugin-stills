@@ -45,11 +45,13 @@ window.MXLPlugins["stills"] = {
     // image doit avoir une copie que ce conteneur voit (son nœud, le dossier de son projet) ; une
     // image d'un serveur réseau est importée puis affichée.
     if(this._ml){ try{ this._ml.destroy(); }catch(_){} }
+    const outFmt = {w:0, h:0};             // format de sortie, relevé par l'état
     const ml = this._ml = window.MediaLibrary.mount($('.stl-lib-host'), {
       vmid, T, toast, kinds:['image'], view:'grid',
       actions:[{id:'show', label:T('plugin.stills.pick','Choisir'), primary:true}],
       onAction:(id, m)=>{ selected = m.path; choose(); ml.render(); },
       current:()=>selected,
+      imageFormat:()=>(outFmt.w ? {w:outFmt.w, h:outFmt.h} : undefined),   // l'éditeur d'image propose le format de SORTIE
       hint:T('plugin.stills.lib_hint2','Double-clic ou « Choisir » : l\'image passe en PREVIEW (TAKE pour l\'antenne ; en mode « Take direct », elle part aussitôt). Glisser une image sur un bin : l\'y ranger.'),
     });
 
@@ -137,6 +139,7 @@ window.MXLPlugins["stills"] = {
           $('.stl-pg-info').textContent = infoLine(gm) + sinceTxt(s.on_air_since) + (s.fading ? ' · ' + T('plugin.stills.fading','fondu en cours') : '');
         } else { setImg('pg', '', false); $('.stl-pg-info').textContent = s.file ? s.file.split('/').pop() : ''; }
         $('.stl-take').disabled = $('.stl-cut').disabled = !pvf;
+        outFmt.w = s.width || 0; outFmt.h = s.height || 0;
         status.textContent = `${s.width||0}×${s.height||0} · ${s.fps||0} fps`
           + ` · Fill:${s.fill_shm||'—'} Key:${s.key_shm||'—'} · v${s.plugin_version}`;
       }catch(e){ status.textContent = T('plugin.stills.state_na','état indisponible'); }
