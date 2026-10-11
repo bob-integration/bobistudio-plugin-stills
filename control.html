@@ -5,14 +5,9 @@
   <div class="stl-noproject-banner" style="display:none;padding:4px 10px;font-size:0.82em;background:var(--bg-elev);border-bottom:1px solid var(--border);color:var(--text-muted)">
     <span data-i18n="plugin.stills.storage_all">Stockage : tous les projets (aucun projet assigné)</span>
   </div>
-  <div class="stl-row">
-    <label><span data-i18n="plugin.stills.folder">Dossier</span>
-      <select class="stl-folder"><option value="" data-i18n="plugin.stills.loading_opt">— chargement… —</option></select>
-    </label>
-    <button class="stl-refresh" data-i18n-title="plugin.stills.refresh_tip" title="Rafraîchir la liste">↻</button>
-  </div>
-
-  <div class="stl-grid" data-i18n-aria="plugin.stills.thumbs_aria" aria-label="Vignettes"></div>
+  <!-- Images : bibliothèque commune (static/js/media_library.js) — base des médias, limitée aux
+       images, en vignettes ; « Afficher » envoie l'image. -->
+  <div class="stl-lib-host"></div>
 
   <div class="stl-row stl-fit">
     <span class="stl-lbl" data-i18n="plugin.stills.fit_lbl">Cadrage :</span>

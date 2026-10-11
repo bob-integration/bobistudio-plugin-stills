@@ -1,23 +1,11 @@
 .stl-ctl { display:flex; flex-direction:column; gap:10px; }
-.stl-ctl button { background:var(--bg-panel); color:var(--text); border:1px solid var(--border-soft);
+.stl-ctl button:not(.ml button) { background:var(--bg-panel); color:var(--text); border:1px solid var(--border-soft);
     border-radius:5px; padding:5px 10px; cursor:pointer; font:inherit; }
-.stl-ctl button:hover { border-color:var(--status-running-fg); }
+.stl-ctl button:not(.ml button):hover { border-color:var(--status-running-fg); }
 
 .stl-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .stl-row label { display:flex; align-items:center; gap:6px; font-size:0.88em; }
-.stl-folder { background:var(--bg-input, var(--bg-panel)); color:var(--text);
-    border:1px solid var(--border-soft); border-radius:5px; padding:5px 8px; min-width:220px; }
 .stl-fit .stl-lbl { color:var(--text-muted); font-size:0.82em; }
-
-.stl-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px;
-    max-height:320px; overflow:auto; padding:4px; border:1px solid var(--border-soft); border-radius:6px; }
-.stl-empty { grid-column:1 / -1; color:var(--text-muted); padding:16px; text-align:center; font-size:0.88em; }
-.stl-thumb { display:flex; flex-direction:column; gap:4px; padding:4px; background:var(--bg-panel);
-    border:1px solid var(--border-soft); border-radius:6px; cursor:pointer; text-align:center; }
-.stl-thumb img { width:100%; height:72px; object-fit:contain; background:#11151a; border-radius:4px; }
-.stl-thumb span { font-size:0.72em; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.stl-thumb:hover { border-color:var(--accent, #7aa2c8); }
-.stl-thumb.sel { border-color:var(--accent, #7aa2c8); box-shadow:0 0 0 1px var(--accent, #7aa2c8) inset; }
 
 /* Section options repliable — pilule centrée (cf. correcteur de couleur) */
 .stl-adv-row { display:flex; align-items:center; gap:14px; margin:2px 0; }

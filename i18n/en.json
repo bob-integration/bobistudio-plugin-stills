@@ -38,5 +38,7 @@
   "type.stills.cfg.slice_mode.label": "Slice mode (sub-frame latency)",
   "type.stills.label": "Stills",
   "plugin.stills.fade": "Fade (ms)",
-  "plugin.stills.fade_tip": "Cross-fade duration when the image changes (0 = straight cut). Repositioning the image stays a cut."
+  "plugin.stills.fade_tip": "Cross-fade duration when the image changes (0 = straight cut). Repositioning the image stays a cut.",
+  "plugin.stills.show": "Show",
+  "plugin.stills.lib_hint": "Double-click or “Show”: the image goes on air. Drag an image onto a bin to put it there."
 }

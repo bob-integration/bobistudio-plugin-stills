@@ -1,7 +1,11 @@
 {
-  "version": "0.17.0",
-  "date": "2026-10-10",
+  "version": "0.18.0",
+  "date": "2026-10-11",
   "changes": {
+    "★ Bibliothèque commune : les images de la base des médias (0.18.0)": [
+      "★ Le choix « Dossier » + grille de vignettes est remplacé par la bibliothèque commune (celle du Player et du Recorder) : base des médias limitée aux images, en vignettes, avec bins, recherche sur n'importe quel champ, serveurs réseau (import puis affichage) et fiche « Infos ». « Afficher » (ou double-clic) envoie l'image.",
+      "Une image doit avoir une copie que ce conteneur voit (son nœud, le dossier de son projet). Les images du volume qui ne sont pas encore dans la base s'importent depuis Réglages → Médias → Base des médias."
+    ],
     "Fondu entre deux images, changement sans à-coup en entrelacé (0.17.0)": [
       "★ FONDU optionnel au changement d'image (remplissage ET clé) : réglage `transition_ms` (0 = coupe franche, défaut), champ « Fondu » de l'interface, paramètre `fade_ms` de l'action « Afficher une image », action « Durée de fondu par défaut ». Ne s'applique qu'à un changement d'IMAGE : repositionner reste une coupe. Un fondu interrompu repart de ce qui est à l'antenne.",
       "Coût : écart précalculé une fois en float32, mélange par bandes sur les cœurs disponibles (2,4 ms par trame 1080 10 bits sur dl360-1). Mesuré au banc, dix changements chacun : 0 créneau manqué en coupe et en fondu de 500 ms à 1080i25, 1080p25 et 1080p50 (non épinglé, cas réel de stills).",

@@ -41,47 +41,23 @@ window.MXLPlugins["stills"] = {
     const yv = () => parseFloat($('.stl-y').value || '0') || 0;
     const sv = () => parseFloat($('.stl-size').value || '100') || 100;
 
-    async function loadFolders(){
-      try{
-        const d = await (await api('/folders')).json();
-        const sel = $('.stl-folder'); const cur = sel.value;
-        const list = d.folders || [];
-        sel.innerHTML = list.length
-          ? list.map(f => `<option value="${f.replace(/"/g,'&quot;')}">${f || '(racine)'}</option>`).join('')
-          : ('<option value="">' + T('plugin.stills.no_image_folder','(aucun dossier contenant des images)') + '</option>');
-        if(cur && list.includes(cur)) sel.value = cur;
-        loadImages();
-      }catch(e){ status.textContent = T('plugin.stills.storage_na','stockage indisponible'); }
-    }
-
-    async function loadImages(){
-      const folder = $('.stl-folder').value || '';
-      const grid = $('.stl-grid');
-      grid.innerHTML = '<div class="stl-empty">Chargement…</div>';
-      try{
-        const d = await (await api('/images?folder=' + encodeURIComponent(folder))).json();
-        const imgs = d.images || [];
-        if(!imgs.length){ grid.innerHTML = ('<div class="stl-empty">' + T('plugin.stills.no_image','Aucune image dans ce dossier.') + '</div>'); return; }
-        grid.innerHTML = imgs.map(p => {
-          const pe = p.replace(/"/g,'&quot;');
-          return `<button type="button" class="stl-thumb${p===selected?' sel':''}" data-path="${pe}" title="${pe}">
-            <img loading="lazy" src="/api/containers/${vmid}/plugin/thumb?path=${encodeURIComponent(p)}" alt="">
-            <span>${(p.split('/').pop())}</span>
-          </button>`;
-        }).join('');
-        grid.querySelectorAll('.stl-thumb').forEach(b => b.onclick = () => {
-          selected = b.dataset.path;
-          grid.querySelectorAll('.stl-thumb').forEach(x => x.classList.toggle('sel', x===b));
-          apply();
-        });
-      }catch(e){ grid.innerHTML = ('<div class="stl-empty">' + T('plugin.stills.err_load','Erreur de chargement.') + '</div>'); }
-    }
+    // Images : la bibliothèque commune (base des médias), limitée aux images, en vignettes. Une
+    // image doit avoir une copie que ce conteneur voit (son nœud, le dossier de son projet) ; une
+    // image d'un serveur réseau est importée puis affichée.
+    if(this._ml){ try{ this._ml.destroy(); }catch(_){} }
+    const ml = this._ml = window.MediaLibrary.mount($('.stl-lib-host'), {
+      vmid, T, toast, kinds:['image'], view:'grid',
+      actions:[{id:'show', label:T('plugin.stills.show','Afficher'), primary:true}],
+      onAction:(id, m)=>{ selected = m.path; apply(); ml.render(); },
+      current:()=>selected,
+      hint:T('plugin.stills.lib_hint','Double-clic ou « Afficher » : l\'image part à l\'antenne. Glisser une image sur un bin : l\'y ranger.'),
+    });
 
     async function apply(){
       if(!selected){ toast(T('plugin.stills.pick_image','Choisissez une image'),'warning'); return; }
       try{
         const r = await (await api('/select', {
-          file: selected, folder: $('.stl-folder').value || '',
+          file: selected, folder: selected.includes('/') ? selected.slice(0, selected.lastIndexOf('/')) : '',
           fit: fit(), x: xv(), y: yv(), size: sv()
         })).json();
         if(r.ok) toast(T('plugin.stills.shown','Image affichée : ') + selected.split('/').pop(), 'info');
@@ -93,7 +69,7 @@ window.MXLPlugins["stills"] = {
     async function refresh(){
       try{
         const s = await (await api('/state')).json();
-        if(s.file && !selected){ selected = s.file; setFit(s.fit || 'native'); }
+        if(s.file && !selected){ selected = s.file; setFit(s.fit || 'native'); ml.render(); }
         const fe = $('.stl-fade'); if(fe && fe !== document.activeElement) fe.value = Math.round(s.transition_ms || 0);
         status.textContent = `${s.file ? (T('plugin.stills.img_prefix','image: ') + s.file.split('/').pop()) : T('plugin.stills.no_img','aucune image')}`
           + ` · ${s.width||0}×${s.height||0} · ${s.fps||0} fps`
@@ -101,8 +77,6 @@ window.MXLPlugins["stills"] = {
       }catch(e){ status.textContent = T('plugin.stills.state_na','état indisponible'); }
     }
 
-    $('.stl-folder').onchange = loadImages;
-    $('.stl-refresh').onclick = loadFolders;
     $('.stl-apply').onclick = apply;
     // Durée de fondu par défaut, à chaud. Elle ne s'applique qu'aux CHANGEMENTS d'image : régler
     // la position reste une coupe (règle côté conteneur).
@@ -126,7 +100,6 @@ window.MXLPlugins["stills"] = {
       else toast('Moniteur indisponible','warning');
     };
 
-    loadFolders();
     refresh();
     if(this._timer) clearInterval(this._timer);
     this._timer = setInterval(refresh, 2000);

@@ -38,5 +38,7 @@
   "type.stills.cfg.slice_mode.label": "Mode tranche (latence sous-image)",
   "type.stills.label": "Images fixes",
   "plugin.stills.fade": "Fondu (ms)",
-  "plugin.stills.fade_tip": "Durée du fondu enchaîné au changement d'image (0 = coupe franche). Repositionner l'image reste une coupe."
+  "plugin.stills.fade_tip": "Durée du fondu enchaîné au changement d'image (0 = coupe franche). Repositionner l'image reste une coupe.",
+  "plugin.stills.show": "Afficher",
+  "plugin.stills.lib_hint": "Double-clic ou « Afficher » : l'image part à l'antenne. Glisser une image sur un bin : l'y ranger."
 }

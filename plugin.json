@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
     "section": "medias",
@@ -18,6 +18,7 @@
   },
   "script_template": "script.py",
   "ui": {
+    "own_library": true,
     "control_html": "control.html",
     "control_js": "control.js",
     "control_css": "control.css"
