@@ -2,9 +2,22 @@
 
 Affiche une image fixe et la produit dans le pipeline MXL avec deux sorties : **Fill** (image) et **Key** (alpha canal). Idéal pour logos, bandeaux, sous-titres.
 
+## À l'antenne et en preview
+
+En haut de la page, deux vues côte à côte :
+
+- **PROGRAMME** : l'image réellement à l'antenne (la vraie image de sortie, pas la vignette du fichier), avec son nom, sa définition, le cadrage appliqué et depuis quand elle est à l'antenne (« fondu en cours » pendant un fondu).
+- **PREVIEW** : l'image choisie, rendue avec le **cadrage réglé** — ce que l'on voit est ce qui passera. Changer le cadrage ou la position met la preview à jour aussitôt. Une image transparente s'affiche sur un damier ; **Voir la clé** montre l'alpha.
+
+Les boutons **TAKE** (passe la preview à l'antenne, avec le fondu réglé) et **CUT** (sans fondu) sont entre les deux. **Stream** ouvre la sortie en flux WebRTC dans une fenêtre du moniteur, pour voir un fondu en vrai (optionnel).
+
 ## Choisir une image
 
-Dans **Médias → Images fixes** : choisir un dossier, les vignettes s'affichent. Cliquer une vignette pour la mettre en sortie.
+Dans la bibliothèque (base des médias : bins, recherche, serveurs réseau, fiche Infos) : **double-clic** ou **Choisir** met l'image en **preview**, puis **TAKE** l'envoie à l'antenne. Avec **Take direct** coché (réglage du plugin, décoché par défaut), choisir une image la met directement à l'antenne, sans preview. Glisser une image sur un bin l'y range.
+
+## Éditer une image
+
+Menu d'une image → **Éditer…** : recadrage, fond (dont l'image floutée), zones floutées ou pixelisées, bordure, ombre, texte, calques. L'éditeur propose d'emblée le **format de sortie de ce conteneur** (sa définition). L'enregistrement crée une nouvelle image à côté de l'originale, qui n'est jamais modifiée ; elle apparaît dans la bibliothèque et peut être mise en preview. Détails : article « Proxys de lecture et éditeur d'image » de l'Aide.
 
 ## Sorties
 
@@ -22,6 +35,14 @@ Dans **Médias → Images fixes** : choisir un dossier, les vignettes s'affichen
 | Plein cadre | Étirée pour remplir (peut déformer) |
 
 La section **Position & taille** ajoute un réglage X/Y/Taille en % du cadre (indépendant de la résolution).
+
+## Fondu
+
+Le réglage **Fondu (ms)** donne la durée du fondu enchaîné au changement d'image (0 = coupe franche). Repositionner la même image reste une coupe.
+
+## Macros
+
+Actions : preview d'une image, Take, Cut, afficher une image ; réglage Take direct. L'état lisible indique l'image en preview et l'image à l'antenne.
 
 ## Cas d'usage typique
 
