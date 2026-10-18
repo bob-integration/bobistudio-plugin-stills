@@ -49,7 +49,7 @@ window.MXLPlugins["stills"] = {
     const ml = this._ml = window.MediaLibrary.mount($('.stl-lib-host'), {
       vmid, T, toast, kinds:['image'], view:'grid',
       actions:[{id:'show', label:T('plugin.stills.pick','Choisir'), primary:true}],
-      onAction:(id, m)=>{ selected = m.path; choose(); ml.render(); },
+      onAction:(id, m)=>{ selected = m.path; choose(); ml.markCurrent ? ml.markCurrent() : ml.render(); },   // repère seul : render() rechargeait toutes les vignettes
       current:()=>selected,
       imageFormat:()=>(outFmt.w ? {w:outFmt.w, h:outFmt.h} : undefined),   // l'éditeur d'image propose le format de SORTIE
       hint:T('plugin.stills.lib_hint2','Double-clic ou « Choisir » : l\'image passe en PREVIEW (TAKE pour l\'antenne ; en mode « Take direct », elle part aussitôt). Glisser une image sur un bin : l\'y ranger.'),

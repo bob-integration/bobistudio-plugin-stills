@@ -49,8 +49,8 @@
   "plugin.stills.pg_empty": "Rien à l'antenne",
   "plugin.stills.take_direct": "Take direct",
   "plugin.stills.take_direct_tip": "Coché : choisir une image la met directement à l'antenne (sans passer par la preview)",
-  "plugin.stills.view_key": "Voir la clé",
-  "plugin.stills.view_key_tip": "Voir la clé (l'alpha) au lieu du remplissage sur damier",
+  "plugin.stills.view_key": "Voir la découpe",
+  "plugin.stills.view_key_tip": "Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier",
   "plugin.stills.stream": "Stream",
   "plugin.stills.stream_tip": "Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai",
   "plugin.stills.pick": "Choisir",
@@ -62,5 +62,5 @@
   "type.stills.cfg.take_direct.label": "Take direct",
   "type.stills.cfg.take_direct.help": "Décoché (défaut) : choisir une image la met en PREVIEW, le bouton Take l'envoie à l'antenne (avec le fondu réglé). Coché : choisir une image la met directement à l'antenne.",
   "type.stills.cfg.transition_ms.label": "Fondu entre deux images (ms)",
-  "type.stills.cfg.transition_ms.help": "Durée du fondu enchaîné quand on change d'image (remplissage ET clé). 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »)."
+  "type.stills.cfg.transition_ms.help": "Durée du fondu enchaîné quand on change d'image (remplissage ET signal de découpe). 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »)."
 }
