@@ -62,5 +62,6 @@
   "type.stills.cfg.take_direct.label": "Take direct",
   "type.stills.cfg.take_direct.help": "Décoché (défaut) : choisir une image la met en PREVIEW, le bouton Take l'envoie à l'antenne (avec le fondu réglé). Coché : choisir une image la met directement à l'antenne.",
   "type.stills.cfg.transition_ms.label": "Fondu entre deux images (ms)",
-  "type.stills.cfg.transition_ms.help": "Durée du fondu enchaîné quand on change d'image (remplissage ET signal de découpe). 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »)."
+  "type.stills.cfg.transition_ms.help": "Durée du fondu enchaîné quand on change d'image (remplissage ET signal de découpe). 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »).",
+  "plugin.stills.resize_tip": "Glisser pour redimensionner les écrans PREVIEW / PROGRAMME (double-clic : taille par défaut)"
 }

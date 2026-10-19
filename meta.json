@@ -1,7 +1,13 @@
 {
-  "version": "0.19.1",
-  "date": "2026-10-11",
+  "version": "0.19.2",
+  "date": "2026-10-19",
   "changes": {
+    "Écrans PREVIEW / PROGRAMME redimensionnables (0.19.2)": [
+      "Une poignée sous les deux écrans les redimensionne à la main (souris ou doigt ; flèches au clavier) : réduits, ils laissent la place à la bibliothèque d'images. Double-clic sur la poignée : retour à la taille par défaut. La taille est mémorisée par navigateur.",
+      "Par défaut, les écrans ne dépassent plus ~45 % de la hauteur de la fenêtre : sur un grand écran, ils prenaient toute la hauteur.",
+      "Les deux écrans sont alignés par le bas : une légende sur deux lignes ne les décale plus.",
+      "Interface seule : aucun redéploiement nécessaire."
+    ],
     "★ Mode Take : preview et programme côte à côte (0.19.0)": [
       "★ En haut : l'image RÉELLEMENT à l'antenne (Programme, avec damier sous la transparence, vue Clé en option) et la PREVIEW. Choisir une image ne l'envoie plus à l'antenne : elle s'affiche en preview, avec le cadrage choisi — calculé par le plugin avec le MÊME code que la sortie (`_compose`), sans rien écrire sur le bus. Bouton TAKE (fondu réglé), CUT (coupe). Réglage « Take direct » = ancien comportement (choisir = antenne) ; défaut = mode Take.",
       "Programme : JPEG encodé à la demande et mis en cache — jamais d'encodage en continu (`jpeg_encodes` dans /state le prouve) ; pendant un fondu, au plus une dizaine d'encodages et seulement si une page regarde.",

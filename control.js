@@ -55,6 +55,37 @@ window.MXLPlugins["stills"] = {
       hint:T('plugin.stills.lib_hint2','Double-clic ou « Choisir » : l\'image passe en PREVIEW (TAKE pour l\'antenne ; en mode « Take direct », elle part aussitôt). Glisser une image sur un bin : l\'y ranger.'),
     });
 
+    // Écrans PREVIEW / PROGRAMME redimensionnables : glisser la poignée (souris ou doigt), flèches au
+    // clavier, double-clic = taille par défaut (CSS : ~45 % de la hauteur de la fenêtre). Confort de l'opérateur, propre à ce navigateur (pas un
+    // réglage du conteneur) ; stockage indisponible (navigation privée) : taille par défaut.
+    const PP_KEY = 'stills-pp-width', PP_MIN = 240, ctlEl = el.querySelector('.stl-ctl'), pp = $('.stl-pp'), grip = $('.stl-pp-grip');
+    const setPp = w => {
+      const max = ctlEl.clientWidth || 0;
+      if(!(w > 0)){ pp.style.maxWidth = ''; ctlEl.classList.toggle('is-compact', pp.getBoundingClientRect().width < 520); return 0; }
+      if(max && w >= max){ pp.style.maxWidth = 'none'; ctlEl.classList.remove('is-compact'); return max; }
+      w = Math.round(Math.max(PP_MIN, w));
+      pp.style.maxWidth = w + 'px'; ctlEl.classList.toggle('is-compact', w < 520);
+      return w;
+    };
+    const savePp = w => { try{ if(w) localStorage.setItem(PP_KEY, String(w)); else localStorage.removeItem(PP_KEY); }catch(_){} };
+    try{ setPp(parseFloat(localStorage.getItem(PP_KEY))); }catch(_){}
+    // Deux écrans 16:9 côte à côte : 1 px de hauteur ≈ 2 × 16/9 px de largeur → la bordure basse suit le doigt.
+    const PX_PER_DY = 32 / 9;
+    grip.addEventListener('pointerdown', ev => {
+      ev.preventDefault(); grip.setPointerCapture(ev.pointerId); grip.classList.add('is-drag');
+      const y0 = ev.clientY, w0 = pp.getBoundingClientRect().width;
+      let w = w0;
+      const move = e => { w = setPp(w0 + (e.clientY - y0) * PX_PER_DY); };
+      const up = () => { grip.classList.remove('is-drag'); savePp(w);
+        grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); };
+      grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+    });
+    grip.addEventListener('dblclick', () => savePp(setPp(0)));
+    grip.addEventListener('keydown', e => {
+      const d = e.key === 'ArrowUp' ? -40 : e.key === 'ArrowDown' ? 40 : 0; if(!d) return;
+      e.preventDefault(); savePp(setPp(pp.getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1)));
+    });
+
     const direct = () => !!($('.stl-direct') && $('.stl-direct').checked);
     const params = () => ({
       file: selected, folder: selected.includes('/') ? selected.slice(0, selected.lastIndexOf('/')) : '',

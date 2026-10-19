@@ -26,7 +26,8 @@
 .stl-fade-lbl input { width:80px; }
 
 /* Preview / Programme côte à côte (mode Take) */
-.stl-pp { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:10px; align-items:center; }
+/* Écrans alignés par le BAS : une légende sur deux lignes ne décale plus l'un des deux. */
+.stl-pp { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:10px; align-items:end; }
 .stl-pane { margin:0; min-width:0; }
 .stl-pane figcaption { display:flex; align-items:baseline; gap:8px; margin-bottom:4px; min-width:0; }
 .stl-tag { font-size:0.72em; font-weight:700; letter-spacing:0.6px; padding:1px 7px; border-radius:3px; flex:none; }
@@ -39,10 +40,22 @@
 .stl-pane-pg .stl-screen { border-color:#c62828; }
 .stl-screen img { width:100%; height:100%; object-fit:contain; display:block; }
 .stl-empty { color:var(--text-muted); font-size:0.8em; padding:8px; text-align:center; }
-.stl-take-col { display:flex; flex-direction:column; gap:8px; }
+.stl-take-col { display:flex; flex-direction:column; gap:8px; align-self:center; }
 .stl-ctl .stl-take-col button { min-width:64px; font-weight:700; letter-spacing:0.5px; padding:9px 12px; }
 .stl-ctl .stl-take { background:#c62828; color:#fff; border-color:#c62828; }
 .stl-ctl .stl-take:disabled, .stl-ctl .stl-cut:disabled { opacity:.45; cursor:default; }
 .stl-pp-opts { justify-content:flex-start; }
+/* Écrans PREVIEW / PROGRAMME redimensionnables à la main (poignée dessous) : réduits, ils laissent
+   la hauteur à la bibliothèque d'images. La largeur porte la taille (écrans en 16:9). Poignée haute
+   de 14 px pour le doigt ; touch-action:none pour que le glisser ne fasse pas défiler la page. */
+/* Par défaut, deux écrans 16:9 hauts d'au plus 45 % de la fenêtre (+ la colonne TAKE/CUT) : sur un
+   grand écran ils prenaient toute la hauteur et écrasaient la bibliothèque. Centrés. */
+.stl-pp { max-width:calc(45vh * 32 / 9 + 100px); width:100%; margin-inline:auto; }
+.stl-ctl.is-compact .stl-info { display:none; }
+.stl-ctl.is-compact .stl-take-col button { min-width:52px; padding:6px 8px; }
+.stl-pp-grip { height:14px; margin:-4px 0; display:flex; align-items:center; justify-content:center;
+    cursor:ns-resize; touch-action:none; outline:none; border-radius:4px; }
+.stl-pp-grip span { width:56px; height:4px; border-radius:2px; background:var(--border); }
+.stl-pp-grip:hover span, .stl-pp-grip:focus-visible span, .stl-pp-grip.is-drag span { background:var(--accent, #7aa2c8); }
 .stl-ctl.is-direct .stl-take-col { opacity:.45; }
 @media (max-width: 720px) { .stl-pp { grid-template-columns:1fr; } .stl-take-col { flex-direction:row; } }
