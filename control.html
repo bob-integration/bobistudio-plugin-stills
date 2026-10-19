@@ -5,6 +5,8 @@
   <div class="stl-noproject-banner" style="display:none;padding:4px 10px;font-size:0.82em;background:var(--bg-elev);border-bottom:1px solid var(--border);color:var(--text-muted)">
     <span data-i18n="plugin.stills.storage_all">Stockage : tous les projets (aucun projet assigné)</span>
   </div>
+  <!-- Colonne « écrans » : en disposition « PGM seul à droite », elle passe à droite de la bibliothèque. -->
+  <div class="stl-side">
   <!-- Preview / Programme côte à côte (mode Take) -->
   <div class="stl-pp">
     <figure class="stl-pane stl-pane-pv">
@@ -27,11 +29,18 @@
     <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
     <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
     <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
+    <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
   </div>
+  </div>
+  <div class="stl-side-grip" role="separator" aria-orientation="vertical" tabindex="0"
+       data-i18n-aria="plugin.stills.side_resize_tip" aria-label="Glisser pour élargir ou réduire la colonne PROGRAMME (double-clic : largeur par défaut)"
+       data-i18n-title="plugin.stills.side_resize_tip" title="Glisser pour élargir ou réduire la colonne PROGRAMME (double-clic : largeur par défaut)"><span></span></div>
 
   <!-- Images : bibliothèque commune (static/js/media_library.js) — base des médias, limitée aux
        images, en vignettes ; « Afficher » envoie l'image. -->
   <div class="stl-lib-host"></div>
+
+  <div class="stl-side2">
 
   <div class="stl-row stl-fit">
     <span class="stl-lbl" data-i18n="plugin.stills.fit_lbl">Cadrage :</span>
@@ -53,4 +62,5 @@
     <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée du fondu au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.fade">Fondu (ms)</span><input type="number" class="stl-fade" value="0" step="100" min="0" max="10000"></label>
   </div>
   <div class="stl-status">…</div>
+  </div>
 </div>

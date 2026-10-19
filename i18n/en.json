@@ -63,5 +63,8 @@
   "type.stills.cfg.take_direct.help": "Unchecked (default): picking an image puts it in PREVIEW and the Take button sends it on air (with the configured fade). Checked: picking an image puts it straight on air.",
   "type.stills.cfg.transition_ms.label": "Cross-fade between two images (ms)",
   "type.stills.cfg.transition_ms.help": "Length of the cross-fade when the image changes (fill AND key). 0 = hard cut. It only applies to an image CHANGE: repositioning the image stays a cut. Overridable per change (the “Fade” parameter of the “Show an image” action) and hot (the “Default fade length” action).",
-  "plugin.stills.resize_tip": "Drag to resize the PREVIEW / PROGRAM screens (double-click: default size)"
+  "plugin.stills.resize_tip": "Drag to resize the PREVIEW / PROGRAM screens (double-click: default size)",
+  "plugin.stills.pgm_right": "PGM only, on the right",
+  "plugin.stills.pgm_right_tip": "Only the PROGRAM screen, on the right: the library takes the full height on the left. The preview stays active (its name is shown) and TAKE sends it on air.",
+  "plugin.stills.side_resize_tip": "Drag to widen or narrow the PROGRAM column (double-click: default width)"
 }

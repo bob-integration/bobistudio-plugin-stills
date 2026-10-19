@@ -51,11 +51,39 @@
 /* Par défaut, deux écrans 16:9 hauts d'au plus 45 % de la fenêtre (+ la colonne TAKE/CUT) : sur un
    grand écran ils prenaient toute la hauteur et écrasaient la bibliothèque. Centrés. */
 .stl-pp { max-width:calc(45vh * 32 / 9 + 100px); width:100%; margin-inline:auto; }
-.stl-ctl.is-compact .stl-info { display:none; }
-.stl-ctl.is-compact .stl-take-col button { min-width:52px; padding:6px 8px; }
+.stl-ctl.is-compact:not(.is-pgm-right) .stl-info { display:none; }
+.stl-ctl.is-compact:not(.is-pgm-right) .stl-take-col button { min-width:52px; padding:6px 8px; }
 .stl-pp-grip { height:14px; margin:-4px 0; display:flex; align-items:center; justify-content:center;
     cursor:ns-resize; touch-action:none; outline:none; border-radius:4px; }
 .stl-pp-grip span { width:56px; height:4px; border-radius:2px; background:var(--border); }
 .stl-pp-grip:hover span, .stl-pp-grip:focus-visible span, .stl-pp-grip.is-drag span { background:var(--accent, #7aa2c8); }
 .stl-ctl.is-direct .stl-take-col { opacity:.45; }
 @media (max-width: 720px) { .stl-pp { grid-template-columns:1fr; } .stl-take-col { flex-direction:row; } }
+
+/* Colonnes : empilées par défaut (comportement historique). */
+.stl-side, .stl-side2 { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.stl-side-grip { display:none; }
+
+/* Disposition « PGM seul, à droite » (préférence de l'opérateur, mémorisée par navigateur) : la
+   bibliothèque prend toute la hauteur à gauche ; à droite, l'écran PROGRAMME, TAKE / CUT et la ligne
+   PREVIEW réduite à son nom (la preview reste active : TAKE l'envoie). Largeur de la colonne réglée à
+   la poignée verticale (--stl-side-w, posée par le script) ; par défaut un tiers de la largeur. */
+.stl-ctl.is-pgm-right { display:grid; grid-template-columns:minmax(0,1fr) 14px var(--stl-side-w, clamp(260px, 34%, 480px));
+    grid-template-rows:auto auto 1fr; column-gap:4px; row-gap:10px; align-items:start; }
+.stl-ctl.is-pgm-right > .stl-project-banner, .stl-ctl.is-pgm-right > .stl-noproject-banner { grid-column:1 / -1; grid-row:1; }
+.stl-ctl.is-pgm-right > .stl-lib-host { grid-column:1; grid-row:2 / span 2; min-width:0; }
+.stl-ctl.is-pgm-right > .stl-side { grid-column:3; grid-row:2; }
+.stl-ctl.is-pgm-right > .stl-side2 { grid-column:3; grid-row:3; }
+.stl-ctl.is-pgm-right > .stl-side-grip { grid-column:2; grid-row:2 / span 2; align-self:stretch; display:flex;
+    align-items:center; justify-content:center; cursor:ew-resize; touch-action:none; outline:none; border-radius:4px; }
+.stl-side-grip span { width:4px; height:56px; border-radius:2px; background:var(--border); }
+.stl-side-grip:hover span, .stl-side-grip:focus-visible span, .stl-side-grip.is-drag span { background:var(--accent, #7aa2c8); }
+/* Vignettes sur toute la hauteur de la fenêtre (la bibliothèque commune plafonne à 440 px). */
+.stl-ctl.is-pgm-right .stl-lib-host .ml-scroll { max-height:calc(100vh - 230px); }
+.stl-ctl.is-pgm-right .stl-pp { grid-template-columns:minmax(0,1fr); max-width:none !important; margin:0; align-items:start; }
+.stl-ctl.is-pgm-right .stl-pane-pg { order:1; }
+.stl-ctl.is-pgm-right .stl-take-col { order:2; flex-direction:row; align-self:auto; }
+.stl-ctl.is-pgm-right .stl-take-col button { flex:1; }
+.stl-ctl.is-pgm-right .stl-pane-pv { order:3; }
+.stl-ctl.is-pgm-right .stl-pane-pv .stl-screen, .stl-ctl.is-pgm-right .stl-pp-grip { display:none; }
+.stl-ctl.is-pgm-right .stl-pane-pv figcaption { margin:0; }

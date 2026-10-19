@@ -86,6 +86,38 @@ window.MXLPlugins["stills"] = {
       e.preventDefault(); savePp(setPp(pp.getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1)));
     });
 
+    // Disposition « PGM seul, à droite » : la bibliothèque prend toute la hauteur à gauche. Préférence
+    // de ce navigateur, comme la taille des écrans. Poignée verticale : largeur de la colonne de droite.
+    const PGM_KEY = 'stills-pgm-right', SIDE_KEY = 'stills-side-width', SIDE_MIN = 260, sideGrip = $('.stl-side-grip');
+    const setSide = w => {
+      const max = Math.max(SIDE_MIN, (ctlEl.clientWidth || 0) * 0.6);
+      if(!(w > 0)){ ctlEl.style.removeProperty('--stl-side-w'); return 0; }
+      w = Math.round(Math.min(max, Math.max(SIDE_MIN, w)));
+      ctlEl.style.setProperty('--stl-side-w', w + 'px'); return w;
+    };
+    const saveSide = w => { try{ if(w) localStorage.setItem(SIDE_KEY, String(w)); else localStorage.removeItem(SIDE_KEY); }catch(_){} };
+    const setPgmRight = on => {
+      ctlEl.classList.toggle('is-pgm-right', !!on); $('.stl-pgm-right').checked = !!on;
+      if(on){ try{ setSide(parseFloat(localStorage.getItem(SIDE_KEY))); }catch(_){} }
+    };
+    try{ setPgmRight(localStorage.getItem(PGM_KEY) === '1'); }catch(_){}
+    $('.stl-pgm-right').onchange = e => { setPgmRight(e.target.checked);
+      try{ localStorage.setItem(PGM_KEY, e.target.checked ? '1' : '0'); }catch(_){} };
+    sideGrip.addEventListener('pointerdown', ev => {
+      ev.preventDefault(); sideGrip.setPointerCapture(ev.pointerId); sideGrip.classList.add('is-drag');
+      const x0 = ev.clientX, w0 = $('.stl-side').getBoundingClientRect().width;
+      let w = w0;
+      const move = e => { w = setSide(w0 - (e.clientX - x0)); };   // vers la gauche = plus large
+      const up = () => { sideGrip.classList.remove('is-drag'); saveSide(w);
+        sideGrip.removeEventListener('pointermove', move); sideGrip.removeEventListener('pointerup', up); sideGrip.removeEventListener('pointercancel', up); };
+      sideGrip.addEventListener('pointermove', move); sideGrip.addEventListener('pointerup', up); sideGrip.addEventListener('pointercancel', up);
+    });
+    sideGrip.addEventListener('dblclick', () => saveSide(setSide(0)));
+    sideGrip.addEventListener('keydown', e => {
+      const d = e.key === 'ArrowLeft' ? 40 : e.key === 'ArrowRight' ? -40 : 0; if(!d) return;
+      e.preventDefault(); saveSide(setSide($('.stl-side').getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1)));
+    });
+
     const direct = () => !!($('.stl-direct') && $('.stl-direct').checked);
     const params = () => ({
       file: selected, folder: selected.includes('/') ? selected.slice(0, selected.lastIndexOf('/')) : '',
@@ -134,9 +166,12 @@ window.MXLPlugins["stills"] = {
       const d = Math.max(0, Math.round(Date.now()/1000 - ts)), t = new Date(ts*1000).toLocaleTimeString();
       return ` · ${T('plugin.stills.since','depuis')} ${t} (${d < 90 ? d + ' s' : Math.round(d/60) + ' min'})`;
     }
-    // Les JPEG ne sont redemandés que si l'image a changé (gen) ou pendant un fondu ; le conteneur
-    // met en cache et n'encode qu'au changement.
-    const seen = {pv:-1, pg:-1, key:false, fadeTick:0};
+    // Les JPEG ne sont redemandés que si l'image a changé (gen) ; le conteneur met en cache et
+    // n'encode qu'au changement. PENDANT UN FONDU, l'écran PROGRAMME ne montre PAS d'image
+    // intermédiaire : relevée toutes les 2 s, elle restait figée à mi-fondu puis sautait — le fondu
+    // semblait ne pas marcher (signalé 2026-10-19). L'écran garde l'image d'avant, annonce « fondu en
+    // cours », et passe à la nouvelle dès la fin (état relevé toutes les 250 ms tant que ça dure).
+    const seen = {fadeT:null};
     function setImg(cls, url, show){
       const im = $('.stl-'+cls+'-img'), em = $('.stl-'+cls+'-empty');
       if(show){ if(im.dataset.u !== url){ im.dataset.u = url; im.src = url; } im.hidden = false; em.hidden = true; }
@@ -163,10 +198,12 @@ window.MXLPlugins["stills"] = {
           setImg('pv', `${base}/preview.jpg?view=${kv}&g=${g}`, true);
           $('.stl-pv-info').textContent = infoLine(pm);
         } else { setImg('pv', '', false); $('.stl-pv-info').textContent = s.preview_error || ''; }
-        // Programme (pendant un fondu : on redemande à chaque relevé)
+        // Programme
+        clearTimeout(seen.fadeT);
+        if(s.fading) seen.fadeT = setTimeout(refresh, 250);
         if(gm){
-          const tick = s.fading ? ++seen.fadeTick : 0;
-          setImg('pg', `${base}/program.jpg?view=${kv}&g=${s.program_gen}-${kv}-${tick}`, true);
+          if(!s.fading || !$('.stl-pg-img').dataset.u)
+            setImg('pg', `${base}/program.jpg?view=${kv}&g=${s.program_gen}-${kv}`, true);
           $('.stl-pg-info').textContent = infoLine(gm) + sinceTxt(s.on_air_since) + (s.fading ? ' · ' + T('plugin.stills.fading','fondu en cours') : '');
         } else { setImg('pg', '', false); $('.stl-pg-info').textContent = s.file ? s.file.split('/').pop() : ''; }
         $('.stl-take').disabled = $('.stl-cut').disabled = !pvf;
@@ -205,8 +242,10 @@ window.MXLPlugins["stills"] = {
       else toast('Moniteur indisponible','warning');
     };
 
-    refresh();
     if(this._timer) clearInterval(this._timer);
+    if(this._seen) clearTimeout(this._seen.fadeT);
+    refresh();
     this._timer = setInterval(refresh, 2000);
+    this._seen = seen;
   }
 };

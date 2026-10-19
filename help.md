@@ -6,10 +6,16 @@ Affiche une image fixe et la produit dans le pipeline MXL avec deux sorties : **
 
 En haut de la page, deux vues côte à côte :
 
-- **PROGRAMME** : l'image réellement à l'antenne (la vraie image de sortie, pas la vignette du fichier), avec son nom, sa définition, le cadrage appliqué et depuis quand elle est à l'antenne (« fondu en cours » pendant un fondu).
-- **PREVIEW** : l'image choisie, rendue avec le **cadrage réglé** — ce que l'on voit est ce qui passera. Changer le cadrage ou la position met la preview à jour aussitôt. Une image transparente s'affiche sur un damier ; **Voir la clé** montre l'alpha.
+- **PROGRAMME** : l'image réellement à l'antenne (la vraie image de sortie, pas la vignette du fichier), avec son nom, sa définition, le cadrage appliqué et depuis quand elle est à l'antenne. Pendant un fondu, cette vue garde l'image d'avant et affiche « fondu en cours », puis passe à la nouvelle image à la fin du fondu : elle ne montre pas le fondu lui-même (pour le voir, **Stream**).
+- **PREVIEW** : l'image choisie, rendue avec le **cadrage réglé** — ce que l'on voit est ce qui passera. Changer le cadrage ou la position met la preview à jour aussitôt. Une image transparente s'affiche sur un damier ; **Voir la découpe** montre l'alpha (le signal de découpe).
 
 Les boutons **TAKE** (passe la preview à l'antenne, avec le fondu réglé) et **CUT** (sans fondu) sont entre les deux. **Stream** ouvre la sortie en flux WebRTC dans une fenêtre du moniteur, pour voir un fondu en vrai (optionnel).
+
+**Taille des écrans** : la poignée sous les deux vues les redimensionne (souris ou doigt, flèches au clavier) ; réduites, elles laissent la place à la bibliothèque. Double-clic sur la poignée : retour à la taille par défaut.
+
+**PGM seul, à droite** : n'affiche que la vue PROGRAMME, dans une colonne à droite ; la bibliothèque prend alors toute la hauteur à gauche. La preview reste active : son nom s'affiche sous TAKE / CUT, et TAKE l'envoie à l'antenne. La poignée verticale entre les deux colonnes règle la largeur de la colonne PROGRAMME.
+
+Ces deux réglages sont propres à votre navigateur : ils ne changent rien pour les autres utilisateurs.
 
 ## Choisir une image
 

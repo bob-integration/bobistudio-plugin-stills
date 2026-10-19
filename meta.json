@@ -1,7 +1,12 @@
 {
-  "version": "0.19.2",
+  "version": "0.19.3",
   "date": "2026-10-19",
   "changes": {
+    "Disposition « PGM seul, à droite » ; fondu non dessiné dans le navigateur (0.19.3)": [
+      "Nouvelle case « PGM seul, à droite » : seule la vue PROGRAMME reste, dans une colonne à droite, et la bibliothèque prend toute la hauteur à gauche. La preview reste active : son nom s'affiche sous TAKE / CUT, et TAKE l'envoie à l'antenne. Une poignée verticale règle la largeur de la colonne (double-clic : un tiers de la largeur). Réglage propre au navigateur.",
+      "Pendant un fondu, la vue PROGRAMME ne montre plus d'image intermédiaire : relevée toutes les 2 s, elle restait figée à mi-fondu puis sautait, et le fondu semblait ne pas marcher. Elle garde l'image d'avant (« fondu en cours ») et passe à la nouvelle dès la fin du fondu. Le fondu à l'antenne n'est pas modifié ; « Stream » permet de le voir.",
+      "Interface seule : aucun redéploiement nécessaire."
+    ],
     "Écrans PREVIEW / PROGRAMME redimensionnables (0.19.2)": [
       "Une poignée sous les deux écrans les redimensionne à la main (souris ou doigt ; flèches au clavier) : réduits, ils laissent la place à la bibliothèque d'images. Double-clic sur la poignée : retour à la taille par défaut. La taille est mémorisée par navigateur.",
       "Par défaut, les écrans ne dépassent plus ~45 % de la hauteur de la fenêtre : sur un grand écran, ils prenaient toute la hauteur.",
