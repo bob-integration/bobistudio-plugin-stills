@@ -115,7 +115,10 @@ _NEUTRAL = 1 << (BIT_DEPTH - 1)
 # (HEIGHT) puis, si le balayage de sortie est entrelacé, l'éclate en 2 champs (top=lignes paires,
 # bottom=impaires) émis à la cadence/index CHAMP. La sortie est DÉCLARÉE entrelacée (Writer) → le
 # reste de la chaîne reste champ-natif (jamais désentrelacé). Progressif inchangé.
+# Formes abrégées acceptées (« p », « i » : celles du mélangeur) — passées telles quelles à libmxl,
+# elles faisaient échouer la création du flux en boucle (« Invalid interlace_mode: p », 2026-10-20).
 SCAN = str(CONFIG.get("scan") or "progressive")
+SCAN = {{"p": "progressive", "i": "interlaced_tff"}}.get(SCAN, SCAN)
 INTERLACED  = SCAN.startswith("interlaced")
 FIELD_ORDER = "bff" if SCAN == "interlaced_bff" else "tff"
 _CW = {{"420": 2, "422": 2, "444": 1}}.get(CHROMA, 2)   # diviseur largeur chroma
@@ -563,7 +566,25 @@ def _render(file, fit, x, y, size, fade_ms=None):
 def feeder():
     # Domaine MXL = $MXL_DOMAIN ou /dev/shm/mxl (sous-rép. du tmpfs bind-monté). Deux flux
     # planar nommés comme les anciens shm (les consommateurs MXL les retrouvent par le NOM).
+    #
+    # ★ L'INSTANCE SE FERME QUAND feeder() SORT. `_supervised` la relance à chaque exception ;
+    # sans cette fermeture, chaque relance laissait une instance MXL ouverte, avec son fil de
+    # surveillance et son descripteur inotify. Le 2026-10-20, un flux impossible à créer a fait
+    # 955 relances en 82 min : le plafond inotify du NŒUD (1024) a été atteint, et plus aucun
+    # conteneur MXL ne pouvait démarrer sur dell-1.
     inst = bobimxl.Instance()
+    opened = []
+    try:
+        _feed(inst, opened)
+    finally:
+        for w in opened:
+            try: w.close()
+            except Exception: pass
+        try: inst.close()
+        except Exception: pass
+
+
+def _feed(inst, opened):
     # Sortie déclarée entrelacée si SCAN=interlaced_* : libmxl dimensionne chaque grain à 1 CHAMP
     # (½ HEIGHT) et double la cadence en interne ; on écrit 2 grains-champs par trame.
     # MODE TRANCHE : les flowDef Fill/Key portent slice_height quand éligible (progressif +
@@ -571,8 +592,10 @@ def feeder():
     _slkw = {{"slice_height": V_SLICE_H}} if V_SLICE_H else {{}}
     fill_w = bobimxl.Writer(inst, FILL_SHM, WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
                             FPS_NUM, FPS_DEN, interlace=SCAN, **_slkw)
+    opened.append(fill_w)
     key_w  = bobimxl.Writer(inst, KEY_SHM,  WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
                             FPS_NUM, FPS_DEN, interlace=SCAN, **_slkw)
+    opened.append(key_w)
     if SLICE_MODE:
         log("slice_mode %s : sorties %s/%s %s" % ("actif" if V_SLICE_H else "INÉLIGIBLE",
             FILL_SHM, KEY_SHM,

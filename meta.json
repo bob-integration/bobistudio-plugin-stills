@@ -1,7 +1,14 @@
 {
-  "version": "0.19.3",
-  "date": "2026-10-19",
+  "version": "0.19.5",
+  "date": "2026-10-20",
   "changes": {
+    "Une relance ne laisse plus d'instance MXL ouverte (0.19.5)": [
+      "Quand la sortie ne pouvait pas être créée, la boucle de reprise relançait toutes les secondes en ouvrant une NOUVELLE instance MXL sans fermer la précédente (fil de surveillance + descripteur inotify). 955 relances ont épuisé le plafond inotify du nœud : plus aucun conteneur MXL ne démarrait sur dell-1. L'instance et les écrivains se ferment désormais à chaque sortie.",
+      "`scan` accepte les formes abrégées « p » / « i » (celles du mélangeur) au lieu d'échouer en boucle sur « Invalid interlace_mode: p »."
+    ],
+    "Vignettes des images déclarées (0.19.4)": [
+      "Le choix d'une image (`select`, `preview`) déclare `option_thumb` : la vignette de chaque fichier (`/thumb`, déjà servie). Les panneaux de workspace montrent les images en tuiles, comme le gestionnaire de médias. `/thumb` rejoint les lectures autorisées au simple login (lecture seule). Manifeste seul : aucun redéploiement."
+    ],
     "Disposition « PGM seul, à droite » ; fondu non dessiné dans le navigateur (0.19.3)": [
       "Nouvelle case « PGM seul, à droite » : seule la vue PROGRAMME reste, dans une colonne à droite, et la bibliothèque prend toute la hauteur à gauche. La preview reste active : son nom s'affiche sous TAKE / CUT, et TAKE l'envoie à l'antenne. Une poignée verticale règle la largeur de la colonne (double-clic : un tiers de la largeur). Réglage propre au navigateur.",
       "Pendant un fondu, la vue PROGRAMME ne montre plus d'image intermédiaire : relevée toutes les 2 s, elle restait figée à mi-fondu puis sautait, et le fondu semblait ne pas marcher. Elle garde l'image d'avant (« fondu en cours ») et passe à la nouvelle dès la fin du fondu. Le fondu à l'antenne n'est pas modifié ; « Stream » permet de le voir.",
