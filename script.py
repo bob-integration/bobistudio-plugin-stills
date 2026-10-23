@@ -338,35 +338,79 @@ try:
     _NCPU = len(os.sched_getaffinity(0))
 except Exception:
     _NCPU = os.cpu_count() or 2
-_FADE_BANDS = max(1, min(3, _NCPU - 1))
+# Plafond porté à 6 le 2026-10-23 : Fill ET Key se mélangent ensemble sur le pool (une image à
+# alpha fond les deux), mesuré sur dell-1 (nœud saturé en bande passante mémoire, 1080p 10 bits) :
+# Fill + Key en 8,7 ms médiane, 14,5 ms au pire sur 6 fils, contre 13,7 / 20,7 ms sur 3.
+_FADE_BANDS = max(1, min(6, _NCPU - 1))
 _FADE_POOL = ThreadPoolExecutor(max_workers=_FADE_BANDS, thread_name_prefix="fondu")
+# Bloc de calcul du fondu, en échantillons : son tampon float32 (512 Ko) reste en cache. Mesuré sur
+# dell-1 le 2026-10-23 : un mélange plein cadre, avec son tampon intermédiaire de 16 Mo, puis
+# recopié dans le grain coûtait 28 ms médiane par flux ; par blocs écrits DANS le grain, 7,5 ms.
+_FADE_CHUNK = 1 << 17
+_fade_tl = threading.local()
 
 
 def _prep_fade(prev_bytes, new_bytes):
-    """Écart (nouvelle − ancienne) en float32, préparé PAR BANDES sur le pool : d'un bloc, la
-    conversion de deux images de 8 Mo tenait le GIL assez longtemps pour faire sauter 2-3
-    créneaux au DÉPART de chaque fondu à 50 i/s."""
+    """Départ (ancienne + 0,5 : l'arrondi y est déjà) et écart (nouvelle − ancienne), en float32,
+    préparés PAR BANDES sur le pool : d'un bloc, la conversion de deux images de 8 Mo tenait le
+    GIL assez longtemps pour faire sauter 2-3 créneaux au DÉPART de chaque fondu à 50 i/s.
+    Rend (départ, écart, tampon de sortie réutilisé)."""
     pv = np.frombuffer(prev_bytes, dtype=_NP_DT); nv = np.frombuffer(new_bytes, dtype=_NP_DT)
     n = pv.size; step = n // _FADE_BANDS
     a = np.empty(n, np.float32); d = np.empty(n, np.float32)
     def _band(i):
         sl = slice(i * step, (i + 1) * step if i < _FADE_BANDS - 1 else n)
         np.copyto(a[sl], pv[sl]); np.copyto(d[sl], nv[sl]); np.subtract(d[sl], a[sl], out=d[sl])
+        np.add(a[sl], 0.5, out=a[sl])
     list(_FADE_POOL.map(_band, range(_FADE_BANDS)))
-    return (a, d, np.empty(n, np.float32), np.empty(n, _NP_DT))
+    return (a, d, np.empty(n, _NP_DT))
+
+
+def _fade_weight(fd):
+    """Poids de la nouvelle image pour la trame courante du fondu `fd`."""
+    return min(1.0, (fd["i"] + 1) / float(fd["n"]))
+
+
+def _rows_span(r0, r1):
+    """Plages d'ÉCHANTILLONS du payload planar couvrant les lignes image [r0, r1) sur les trois
+    plans. `r0` et `r1` sont multiples de _CH (lignes chroma entières)."""
+    ys, uvs = Y_SIZE // _BPS, UV_SIZE // _BPS
+    c0, c1 = r0 // _CH, r1 // _CH
+    return [(r0 * WIDTH, r1 * WIDTH), (ys + c0 * UV_W, ys + c1 * UV_W),
+            (ys + uvs + c0 * UV_W, ys + uvs + c1 * UV_W)]
+
+
+def _mix_range(pr, w, out, lo, hi):
+    """out[lo:hi] = départ + écart·w, par blocs dont le tampon reste en cache : aucun tampon plein
+    cadre, et `out` peut être directement le grain du bus."""
+    a, d = pr[0], pr[1]
+    t = getattr(_fade_tl, "buf", None)
+    if t is None:
+        t = _fade_tl.buf = np.empty(_FADE_CHUNK, np.float32)
+    w = np.float32(w)
+    for s in range(lo, hi, _FADE_CHUNK):
+        e = min(hi, s + _FADE_CHUNK); b = t[:e - s]
+        np.multiply(d[s:e], w, out=b); np.add(b, a[s:e], out=b)
+        np.copyto(out[s:e], b, casting="unsafe")
+
+
+def _mix_rows(pairs, w, r0, r1):
+    """Mélange les lignes [r0, r1) de chaque (préparé, sortie) de `pairs`, ensemble, sur le pool."""
+    spans = _rows_span(r0, r1)
+    per = max(1, sum(hi - lo for lo, hi in spans) * len(pairs) // _FADE_BANDS)
+    jobs = []
+    for pr, out in pairs:
+        for lo, hi in spans:
+            for s in range(lo, hi, per):
+                jobs.append((pr, out, s, min(hi, s + per)))
+    list(_FADE_POOL.map(lambda j: _mix_range(j[0], w, j[1], j[2], j[3]), jobs))
 
 
 def _mix_prepped(pr, w):
     """a + d·w arrondi, à la profondeur du flux. Rend une vue uint8 d'un tampon RÉUTILISÉ : la
     copier (bytes) si elle doit survivre à la trame suivante."""
-    a, d, buf, out = pr
-    n = a.size; step = n // _FADE_BANDS
-    def _band(i):
-        sl = slice(i * step, (i + 1) * step if i < _FADE_BANDS - 1 else n)
-        np.multiply(d[sl], w, out=buf[sl]); np.add(buf[sl], a[sl], out=buf[sl])
-        np.add(buf[sl], 0.5, out=buf[sl]); np.copyto(out[sl], buf[sl], casting="unsafe")
-    list(_FADE_POOL.map(_band, range(_FADE_BANDS)))
-    return out.view(np.uint8)
+    _mix_rows([(pr, pr[2])], w, 0, HEIGHT)
+    return pr[2].view(np.uint8)
 
 
 def _on_air(snap, private=False):
@@ -376,9 +420,8 @@ def _on_air(snap, private=False):
     fd = snap.get("fade")
     if not fd:
         return snap["fill"], snap["key"]
-    w = min(1.0, (fd["i"] + 1) / float(fd["n"]))
-    own = (lambda pr: (pr[0], pr[1], np.empty_like(pr[2]), np.empty_like(pr[3]))) if private \
-        else (lambda pr: pr)
+    w = _fade_weight(fd)
+    own = (lambda pr: (pr[0], pr[1], np.empty_like(pr[2]))) if private else (lambda pr: pr)
     f = _mix_prepped(own(fd["f"]), w)
     k = snap["key"] if fd["k"] is None else _mix_prepped(own(fd["k"]), w)
     return f, k
@@ -657,9 +700,10 @@ def _feed(inst, opened):
                 frames["fade"]["i"] += 1
                 if frames["fade"]["i"] >= frames["fade"]["n"]:
                     frames["fade"] = None
-        fb, kb = _on_air(snap)                 # mélange HORS verrou
-        still = snap["fade"] is None           # image fixe : objets bytes stables d'une trame à l'autre
+        fd = snap["fade"]
+        still = fd is None                     # image fixe : objets bytes stables d'une trame à l'autre
         if INTERLACED:
+            fb, kb = _on_air(snap)             # mélange HORS verrou
             # éclate la TRAME en 2 champs → index CHAMP (pair = 1er champ) = 2*trame, 2*trame+1
             fsrc = np.frombuffer(fb, dtype=np.uint8); ksrc = np.frombuffer(kb, dtype=np.uint8)
             first = 1 if FIELD_ORDER == "bff" else 0
@@ -671,9 +715,37 @@ def _feed(inst, opened):
                     _write_field(vw_, src_, par)
                     w_.commit(gi_)
             gidx = fi1 if fi1 is not None else fill_w._counter - 1
+        elif fd is not None:
+            # FONDU : le mélange s'écrit DIRECTEMENT dans les grains, Fill et Key ensemble sur le
+            # pool — ni tampon plein cadre, ni recopie. Une clé inchangée (image opaque) n'est
+            # pas mélangée : elle passe par le cache des cases comme une image fixe. En mode
+            # tranche, le grain est publié par tiers (commit progressif), pas d'un bloc.
+            w = _fade_weight(fd)
+            gidx, gi_f, view_f = fill_w.open_grain(index=idx)
+            _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
+            _held(view_f, None, False)
+            pairs = [(fd["f"], view_f.view(_NP_DT))]
+            if fd["k"] is None:
+                if not _held(view_k, snap["key"], True):
+                    bobimxl.blit(view_k, np.frombuffer(snap["key"], dtype=np.uint8))
+            else:
+                _held(view_k, None, False)
+                pairs.append((fd["k"], view_k.view(_NP_DT)))
+            if V_SLICE_H:
+                step = V_SLICE_H * -(-_V_TOTAL_SLICES // 3)
+                for r1 in range(step, HEIGHT, step):
+                    _mix_rows(pairs, w, r1 - step, r1)
+                    for w_, gi_ in ((fill_w, gi_f), (key_w, gi_k)):
+                        w_.commit(gi_, valid_slices=r1 // V_SLICE_H)
+                _mix_rows(pairs, w, (HEIGHT - 1) // step * step, HEIGHT)
+            else:
+                _mix_rows(pairs, w, 0, HEIGHT)
+            fill_w.commit(gi_f)
+            key_w.commit(gi_k)
         elif V_SLICE_H:
             # MODE TRANCHE : émission par bandes des trames déjà rendues (commit progressif).
             # Mêmes index de grain que l'historique — seul le commit change.
+            fb, kb = snap["fill"], snap["key"]
             gidx, gi_f, view_f = fill_w.open_grain(index=idx)
             if _held(view_f, fb, still):
                 fill_w.commit(gi_f)
@@ -686,6 +758,7 @@ def _feed(inst, opened):
                 _emit_grain_sliced(key_w, gi_k, view_k, kb)
         else:
             # Écriture zéro-copie : on copie les octets planar dans la vue numpy du grain, commit.
+            fb, kb = snap["fill"], snap["key"]
             gidx, gi_f, view_f = fill_w.open_grain(index=idx)
             if not _held(view_f, fb, still):
                 bobimxl.blit(view_f, np.frombuffer(fb, dtype=np.uint8))

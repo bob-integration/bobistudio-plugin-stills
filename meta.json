@@ -1,7 +1,12 @@
 {
-  "version": "0.19.6",
+  "version": "0.19.7",
   "date": "2026-10-23",
   "changes": {
+    "Fondus tenus à 50 i/s sur un nœud chargé (0.19.7)": [
+      "Pendant un fondu, le mélange s'écrit désormais directement dans le bus, par petits blocs, Fill et Key ensemble sur jusqu'à 6 fils. Il passait par une image intermédiaire de 16 Mo puis par une copie : sur dell-1 (23/10), un fondu ratait une trame sur deux. Mesuré sur ce nœud : Fill + Key en 8,7 ms au lieu de plus de 30 ms, pour un budget de 20 ms.",
+      "Une clé inchangée (image opaque) n'est plus du tout retraitée pendant le fondu.",
+      "En mode tranche, chaque trame du fondu est publiée par tiers au lieu d'attendre la fin du mélange."
+    ],
     "Une image fixe n'est plus recopiée à chaque trame (0.19.6)": [
       "La sortie recopiait Fill et Key (2 × 8 Mo en 1080p 10 bits) dans le bus à chaque trame, même quand l'image ne changeait pas. Sur un nœud chargé en bande passante mémoire (dell-1, 23/10), une copie coûtait jusqu'à 9 ms : la trame dépassait ses 20 ms et 5 à 12 créneaux par seconde étaient perdus, d'où les images qui clignotaient au noir sur le multiview. Chaque case de l'anneau garde désormais l'image qu'elle porte : une image fixe n'est copiée qu'une fois par case, puis seulement publiée. Les fondus recopient toujours à chaque trame."
     ],
