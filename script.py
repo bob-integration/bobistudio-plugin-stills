@@ -769,9 +769,14 @@ def _feed(inst, opened):
             key_w.commit(gi_k)
         win_cnt += 1
         el = time.time() - win_start
+        # frame_index à CHAQUE trame : publié une fois par fenêtre d'une seconde, il datait de 0 à
+        # ~1 s au moment où on le lisait, et un débit calculé dessus sur 30 s affichait 50,59 i/s
+        # pour 49,999 réels (relevé du 2026-10-23 sur stills-Satis).
+        with metrics_lock:
+            metrics["frame_index"] = gidx
         if el >= 1.0:
             with metrics_lock:
-                metrics["fps"] = round(win_cnt / el, 1); metrics["frame_index"] = gidx
+                metrics["fps"] = round(win_cnt / el, 1)
                 metrics["slots_missed"] = missed
             win_cnt = 0; win_start = time.time()
         if not GENLOCK:
