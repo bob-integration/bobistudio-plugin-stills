@@ -608,6 +608,24 @@ def _feed(inst, opened):
     # trames successives) : c'est la seule mesure qui ne dépend pas d'un observateur qui pourrait
     # lui-même prendre du retard. Publié sur :8080 (`slots_missed`) — à comparer à l'intention.
     last_idx = None; missed = 0
+    # Case de l'anneau → image qu'elle CONTIENT déjà (l'objet bytes lui-même, comparé par `is`).
+    # Une image fixe n'a pas à être recopiée à chaque trame : la case de l'anneau la porte encore
+    # depuis le tour précédent. Mesuré le 2026-10-23 sur dell-1 (stills-Satis, 1080p 10 bits) :
+    # une copie de 8 Mo vers /dev/shm coûtait 5,8 ms en médiane, jusqu'à 9 ms (nœud saturé en
+    # bande passante mémoire), soit 12 à 18 ms pour Fill + Key sur un budget de 20 ms, d'où 5 à
+    # 12 créneaux ratés par seconde, alors que le réveil n'avait que 0,1 ms de retard. Pendant
+    # un fondu, la sortie est un tampon RÉUTILISÉ dont le contenu change à chaque trame : on ne
+    # mémorise rien. La clé est l'adresse de la case : une instance recréée repart à vide, car
+    # `_feed` est relancé.
+    held = {{}}
+
+    def _held(view, payload, cacheable):
+        """True si la case `view` porte déjà `payload` ; sinon la note comme le portant."""
+        addr = view.ctypes.data
+        if cacheable and held.get(addr) is payload:
+            return True
+        held[addr] = payload if cacheable else None
+        return False
 
     def _emit(w, payload, idx):
         _, gi, view = w.open_grain(index=idx)
@@ -640,6 +658,7 @@ def _feed(inst, opened):
                 if frames["fade"]["i"] >= frames["fade"]["n"]:
                     frames["fade"] = None
         fb, kb = _on_air(snap)                 # mélange HORS verrou
+        still = snap["fade"] is None           # image fixe : objets bytes stables d'une trame à l'autre
         if INTERLACED:
             # éclate la TRAME en 2 champs → index CHAMP (pair = 1er champ) = 2*trame, 2*trame+1
             fsrc = np.frombuffer(fb, dtype=np.uint8); ksrc = np.frombuffer(kb, dtype=np.uint8)
@@ -656,16 +675,24 @@ def _feed(inst, opened):
             # MODE TRANCHE : émission par bandes des trames déjà rendues (commit progressif).
             # Mêmes index de grain que l'historique — seul le commit change.
             gidx, gi_f, view_f = fill_w.open_grain(index=idx)
-            _emit_grain_sliced(fill_w, gi_f, view_f, fb)
+            if _held(view_f, fb, still):
+                fill_w.commit(gi_f)
+            else:
+                _emit_grain_sliced(fill_w, gi_f, view_f, fb)
             _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
-            _emit_grain_sliced(key_w, gi_k, view_k, kb)
+            if _held(view_k, kb, still):
+                key_w.commit(gi_k)
+            else:
+                _emit_grain_sliced(key_w, gi_k, view_k, kb)
         else:
             # Écriture zéro-copie : on copie les octets planar dans la vue numpy du grain, commit.
             gidx, gi_f, view_f = fill_w.open_grain(index=idx)
-            bobimxl.blit(view_f, np.frombuffer(fb, dtype=np.uint8))
+            if not _held(view_f, fb, still):
+                bobimxl.blit(view_f, np.frombuffer(fb, dtype=np.uint8))
             fill_w.commit(gi_f)
             _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
-            bobimxl.blit(view_k, np.frombuffer(kb, dtype=np.uint8))
+            if not _held(view_k, kb, still):
+                bobimxl.blit(view_k, np.frombuffer(kb, dtype=np.uint8))
             key_w.commit(gi_k)
         win_cnt += 1
         el = time.time() - win_start
