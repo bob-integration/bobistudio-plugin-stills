@@ -690,7 +690,12 @@ def _feed(inst, opened):
             if last_idx is not None and idx > last_idx + 1:
                 missed += idx - last_idx - 1
             last_idx = idx
-            bobimxl.sleep_until_tai(fill_w.index_time_ns(idx))
+            # Réveil au DÉBUT du créneau, pas à son centre : `index_time_ns(X)` est le MILIEU du
+            # créneau X (current_index passe à X 10,0 ms avant, mesuré sur dell-1 le 2026-10-25).
+            # L'image est connue d'avance : dormir jusqu'au centre la publiait à 10,3 ms sur 20, et
+            # un mélangeur « au plus rapide » abandonnait l'attente à la demi-période.
+            t_idx = fill_w.index_time_ns(idx)
+            bobimxl.sleep_until_tai(t_idx - (fill_w.index_time_ns(idx + 1) - t_idx) // 2)
         else:
             t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
         with frames_lock:

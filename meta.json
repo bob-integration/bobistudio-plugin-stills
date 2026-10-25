@@ -1,7 +1,10 @@
 {
-  "version": "0.19.8",
-  "date": "2026-10-23",
+  "version": "0.19.10",
+  "date": "2026-10-25",
   "changes": {
+    "Image publiée au début de son créneau (0.19.10)": [
+      "En genlock, l'image fixe était publiée au milieu de son créneau de trame (10,3 ms sur 20 à 50 i/s, mesuré sur dell-1 le 25/10), parce que l'heure d'une trame sur la grille MXL en désigne le centre. Elle part désormais dès le début du créneau, puisqu'elle est connue d'avance : un mélangeur en mode « au plus rapide » la prend sans image de retard."
+    ],
     "frame_index publié à chaque trame (0.19.8)": [
       "Sur :8080, frame_index n'était mis à jour qu'une fois par seconde : lu à un instant quelconque, il avait jusqu'à une seconde de retard, et un débit calculé dessus sur 30 s affichait 50,59 i/s pour 49,999 réels. Il suit désormais chaque trame, comme le mélangeur. fps et slots_missed restent calculés par fenêtre d'une seconde."
     ],
