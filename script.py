@@ -788,7 +788,11 @@ def _feed(inst, opened):
 class MetricsHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         with metrics_lock:
-            body = json.dumps(dict(metrics)).encode()
+            payload = dict(metrics)
+        # Avance des index émis sur la grille TAI (bobimxl.index_report, grid_ms en ms signées, positif =
+        # futur) : seul témoin d'une sortie écrite dans le futur, la cadence restant parfaite.
+        payload["index_ahead"] = bobimxl.index_report()
+        body = json.dumps(payload).encode()
         self.send_response(200); self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body))); self.end_headers()
         self.wfile.write(body)
