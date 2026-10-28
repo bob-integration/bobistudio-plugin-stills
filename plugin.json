@@ -48,7 +48,8 @@
       },
       {
         "essence": "video",
-        "shm": "{hostname}_key"
+        "shm": "{hostname}_key",
+        "tally_follows": "{hostname}"
       }
     ],
     "consumes": [],
