@@ -57,13 +57,13 @@ Câbler **Fill** et **Key** sur les entrées DSK d'un mélangeur pour incruster 
 ## Sortie
 
 - **Genlock** (activé par défaut) : Fill et Key sont calés sur la grille PTP, en phase avec le reste de la chaîne.
-- **Sortie entrelacée native** (optionnelle, réglage `scan`) : le générateur peut produire un flux entrelacé (émission champ par champ) pour être mixé avec des sources entrelacées. Progressif par défaut.
+- **Sortie entrelacée native** (optionnelle : suit le balayage du format vidéo choisi à la création, par exemple un préréglage 1080i ; pas de réglage dans le panneau ⚙) : le générateur peut produire un flux entrelacé (émission champ par champ) pour être mixé avec des sources entrelacées. Progressif par défaut.
 
 ## Mode tranche (latence réduite)
 
 Fill et Key peuvent être publiés **bande par bande** au lieu d'attendre l'image complète (mode tranche MXL) : l'aval en mode tranche démarre son traitement dès la première bande.
 
-- **Opt-in** : paramètre `slice_mode` au déploiement (désactivé par défaut — comportement inchangé).
+- **Interrupteur global** : **Réglages → MXL**, « Trancher toute la chaîne » (éteint par défaut) ; pas de réglage par conteneur dans l'interface. Prise d'effet au (re)déploiement.
 - Sortie progressive uniquement ; en entrelacé, le chemin classique s'applique.
 
 ## Journal (diagnostic)
