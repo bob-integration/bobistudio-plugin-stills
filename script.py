@@ -653,7 +653,7 @@ def _feed(inst, opened):
     last_idx = None; missed = 0
     # Case de l'anneau → image qu'elle CONTIENT déjà (l'objet bytes lui-même, comparé par `is`).
     # Une image fixe n'a pas à être recopiée à chaque trame : la case de l'anneau la porte encore
-    # depuis le tour précédent. Mesuré le 2026-10-23 sur dell-1 (stills-Satis, 1080p 10 bits) :
+    # depuis le tour précédent. Mesuré le 2026-10-23 sur dell-1 (stills-Atelier, 1080p 10 bits) :
     # une copie de 8 Mo vers /dev/shm coûtait 5,8 ms en médiane, jusqu'à 9 ms (nœud saturé en
     # bande passante mémoire), soit 12 à 18 ms pour Fill + Key sur un budget de 20 ms, d'où 5 à
     # 12 créneaux ratés par seconde, alors que le réveil n'avait que 0,1 ms de retard. Pendant
@@ -776,7 +776,7 @@ def _feed(inst, opened):
         el = time.time() - win_start
         # frame_index à CHAQUE trame : publié une fois par fenêtre d'une seconde, il datait de 0 à
         # ~1 s au moment où on le lisait, et un débit calculé dessus sur 30 s affichait 50,59 i/s
-        # pour 49,999 réels (relevé du 2026-10-23 sur stills-Satis).
+        # pour 49,999 réels (relevé du 2026-10-23 sur stills-Atelier).
         with metrics_lock:
             metrics["frame_index"] = gidx
         if el >= 1.0:
