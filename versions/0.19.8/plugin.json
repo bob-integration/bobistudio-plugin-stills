@@ -1,0 +1,404 @@
+{
+  "license": "GPL-3.0-or-later",
+  "type": "stills",
+  "runtime": "docker",
+  "label": "Images fixes",
+  "badge": {
+    "label": "Stills",
+    "class": "mode-media",
+    "oklch": "0.78 0.04 230"
+  },
+  "version": "0.19.8",
+  "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
+  "nav": {
+    "section": "medias",
+    "label": "Medias",
+    "route": "/medias",
+    "order": 15
+  },
+  "script_template": "script.py",
+  "ui": {
+    "own_library": true,
+    "control_html": "control.html",
+    "control_js": "control.js",
+    "control_css": "control.css"
+  },
+  "deploy_defaults": {
+    "folder": "",
+    "file": "",
+    "fit": "native",
+    "x": 0,
+    "y": 0,
+    "size": 100,
+    "width": 1280,
+    "height": 720,
+    "fps": 25,
+    "media_root": "/mnt/media",
+    "genlock": true,
+    "log_level": "info",
+    "transition_ms": 0,
+    "take_direct": false
+  },
+  "media_volume": true,
+  "wiring": {
+    "produces": [
+      {
+        "essence": "video",
+        "shm": "{hostname}"
+      },
+      {
+        "essence": "video",
+        "shm": "{hostname}_key"
+      }
+    ],
+    "consumes": [],
+    "mode": "redeploy"
+  },
+  "control": {
+    "endpoints": [
+      "/state",
+      "/folders",
+      "/images",
+      "/thumb",
+      "/select",
+      "/log_level",
+      "/transition",
+      "/program.jpg",
+      "/preview.jpg",
+      "/preview",
+      "/take",
+      "/cut",
+      "/take_direct"
+    ],
+    "read_endpoints": [
+      "/state",
+      "/program.jpg",
+      "/preview.jpg",
+      "/thumb"
+    ]
+  },
+  "actions": [
+    {
+      "id": "select",
+      "label": "Afficher une image",
+      "endpoint": "/select",
+      "params": [
+        {
+          "key": "file",
+          "label": "Image",
+          "type": "text",
+          "options_endpoint": "/images",
+          "options_path": "images",
+          "option_thumb": "/thumb?path={value}"
+        },
+        {
+          "key": "fade_ms",
+          "label": "Fondu (ms, vide = durée par défaut, 0 = coupe)",
+          "type": "number",
+          "min": 0,
+          "max": 10000
+        }
+      ],
+      "feedback": {
+        "state": "file",
+        "value_from": "file"
+      }
+    },
+    {
+      "id": "log_level",
+      "label": "Niveau de log (à chaud)",
+      "endpoint": "/log_level",
+      "params": [
+        {
+          "key": "level",
+          "label": "Niveau",
+          "type": "text",
+          "default": "info",
+          "options": [
+            {
+              "value": "debug",
+              "label": "Détaillé"
+            },
+            {
+              "value": "info",
+              "label": "Événements (défaut)"
+            },
+            {
+              "value": "warning",
+              "label": "Anomalies seules"
+            },
+            {
+              "value": "error",
+              "label": "Erreurs seules"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transition",
+      "label": "Durée de fondu par défaut",
+      "endpoint": "/transition",
+      "params": [
+        {
+          "key": "ms",
+          "label": "Durée (ms, 0 = coupe franche)",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        }
+      ]
+    },
+    {
+      "id": "preview",
+      "label": "Mettre une image en preview",
+      "endpoint": "/preview",
+      "params": [
+        {
+          "key": "file",
+          "label": "Image",
+          "type": "text",
+          "options_endpoint": "/images",
+          "options_path": "images",
+          "option_thumb": "/thumb?path={value}"
+        }
+      ],
+      "feedback": {
+        "state": "preview_file",
+        "value_from": "file"
+      }
+    },
+    {
+      "id": "take",
+      "label": "Take (preview vers antenne)",
+      "endpoint": "/take",
+      "params": [
+        {
+          "key": "fade_ms",
+          "label": "Fondu (ms, vide = durée par défaut, 0 = coupe)",
+          "type": "number",
+          "min": 0,
+          "max": 10000
+        }
+      ]
+    },
+    {
+      "id": "cut",
+      "label": "Cut (preview vers antenne, coupe franche)",
+      "endpoint": "/cut",
+      "params": []
+    },
+    {
+      "id": "take_direct",
+      "label": "Take direct (choisir = antenne)",
+      "endpoint": "/take_direct",
+      "params": [
+        {
+          "key": "enabled",
+          "label": "Activé",
+          "type": "bool",
+          "default": false
+        }
+      ]
+    }
+  ],
+  "state": [
+    {
+      "id": "file",
+      "label": "Image affichée",
+      "endpoint": "/state",
+      "path": "file",
+      "type": "text"
+    },
+    {
+      "id": "fading",
+      "label": "Fondu en cours",
+      "endpoint": "/state",
+      "path": "fading",
+      "type": "bool"
+    },
+    {
+      "id": "transition_ms",
+      "label": "Fondu par défaut (ms)",
+      "endpoint": "/state",
+      "path": "transition_ms",
+      "type": "number"
+    },
+    {
+      "id": "preview_file",
+      "label": "Image en preview",
+      "endpoint": "/state",
+      "path": "preview_file",
+      "type": "text"
+    },
+    {
+      "id": "program_file",
+      "label": "Image à l'antenne",
+      "endpoint": "/state",
+      "path": "program_file",
+      "type": "text"
+    },
+    {
+      "id": "take_direct",
+      "label": "Take direct",
+      "endpoint": "/state",
+      "path": "take_direct",
+      "type": "bool"
+    }
+  ],
+  "param_tree": {
+    "global_groups": [
+      {
+        "label": "Positionnement de l'image",
+        "endpoint": "/select",
+        "fields": {
+          "fit": {
+            "label": "Adaptation",
+            "type": "enum",
+            "options": [
+              "native",
+              "fit",
+              "stretch"
+            ],
+            "default": "native"
+          },
+          "x": {
+            "label": "Décalage X",
+            "type": "number",
+            "min": -50,
+            "max": 50,
+            "default": 0
+          },
+          "y": {
+            "label": "Décalage Y",
+            "type": "number",
+            "min": -50,
+            "max": 50,
+            "default": 0
+          },
+          "size": {
+            "label": "Échelle",
+            "type": "number",
+            "min": 1,
+            "max": 400,
+            "default": 100
+          }
+        }
+      },
+      {
+        "label": "Transition",
+        "endpoint": "/transition",
+        "fields": {
+          "ms": {
+            "label": "Fondu par défaut (ms)",
+            "type": "number",
+            "min": 0,
+            "max": 10000,
+            "default": 0,
+            "path": "transition_ms"
+          }
+        }
+      },
+      {
+        "label": "Journal (diagnostic)",
+        "endpoint": "/log_level",
+        "fields": {
+          "level": {
+            "label": "Niveau de log",
+            "type": "enum",
+            "options": [
+              "debug",
+              "info",
+              "warning",
+              "error"
+            ],
+            "default": "info",
+            "path": "log_level"
+          }
+        }
+      },
+      {
+        "label": "Mode Take",
+        "endpoint": "/take_direct",
+        "fields": {
+          "enabled": {
+            "label": "Take direct (choisir = antenne)",
+            "type": "bool",
+            "default": false,
+            "path": "take_direct"
+          }
+        }
+      }
+    ]
+  },
+  "config_schema": [
+    {
+      "key": "transition_ms",
+      "type": "number",
+      "label": "Fondu entre deux images (ms)",
+      "help": "Durée du fondu enchaîné quand on change d'image (remplissage ET clé). 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »).",
+      "min": 0,
+      "max": 10000,
+      "default": 0,
+      "scope": "user"
+    },
+    {
+      "key": "take_direct",
+      "type": "checkbox",
+      "label": "Take direct",
+      "help": "Décoché (défaut) : choisir une image la met en PREVIEW, le bouton Take l'envoie à l'antenne (avec le fondu réglé). Coché : choisir une image la met directement à l'antenne. Réglable à chaud (action « Take direct »).",
+      "default": false,
+      "scope": "user"
+    },
+    {
+      "key": "slice_mode",
+      "hidden": true,
+      "type": "checkbox",
+      "label": "Mode tranche (latence sous-image)",
+      "help": "La vidéo est publiée bande par bande sur le bus MXL : l'aval démarre sur la première bande sans attendre l'image complète (latence sous-image). Entrelacé ou hauteur non divisible → repli image entière. Désactivé (défaut) = comportement historique.",
+      "default": false,
+      "scope": "system"
+    },
+    {
+      "key": "slice_lines",
+      "hidden": true,
+      "type": "number",
+      "label": "Lignes par tranche",
+      "help": "Hauteur des bandes (lignes). Doit être un diviseur de la hauteur d'image (36 pour 1080p) — sinon repli image entière.",
+      "min": 4,
+      "max": 540,
+      "default": 36,
+      "scope": "system",
+      "visible_if": {
+        "slice_mode": true
+      }
+    },
+    {
+      "key": "log_level",
+      "type": "select",
+      "label": "Niveau de log",
+      "help": "Verbosité du journal du conteneur. Défaut « Événements » : les faits marquants (démarrage/arrêt, changement de format, reconnexion, repli sur un chemin dégradé, entrée qui apparaît ou disparaît) sont TOUJOURS écrits — après une panne le journal doit permettre de reconstituer l'histoire, et élever le niveau après coup ne récupère rien. Les métriques périodiques (fps, compteurs) ne sont PAS journalisées : elles sont déjà publiées sur :8080. « Détaillé » = lance-flammes par trame, à n'activer que le temps d'un diagnostic (le journal Docker n'est pas roté).",
+      "options": [
+        {
+          "value": "debug",
+          "label": "Détaillé (par trame — diagnostic ponctuel)"
+        },
+        {
+          "value": "info",
+          "label": "Événements (défaut)"
+        },
+        {
+          "value": "warning",
+          "label": "Anomalies seules"
+        },
+        {
+          "value": "error",
+          "label": "Erreurs seules"
+        }
+      ],
+      "default": "info",
+      "scope": "user"
+    }
+  ]
+}
