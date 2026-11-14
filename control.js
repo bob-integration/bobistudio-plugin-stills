@@ -198,6 +198,7 @@ window.MXLPlugins["stills"] = {
         if(lastPv !== null && pvf !== lastPv && pvf !== selected){ selected = pvf; adoptPv = true; ml.markCurrent ? ml.markCurrent() : ml.render(); }
         lastPv = pvf;
         gridTally(s);
+        auxRender(s);
         if(adoptPv){
           adoptPv = false; const p = s.preview || {};
           if(pvf){ setFit(p.fit || 'native'); $('.stl-x').value = p.x ?? 0; $('.stl-y').value = p.y ?? 0; $('.stl-size').value = p.size ?? 100; }
@@ -317,7 +318,7 @@ window.MXLPlugins["stills"] = {
         if(c.hidden) return `<button type="button" class="ctl-push ctl-push--tile stl-cell is-missing" data-cell="${i}" disabled>${escH(T('plugin.stills.gcell_hidden','image hors de votre portée'))}</button>`;
         const thumb = c.asset ? `/api/media/assets/${encodeURIComponent(c.asset)}/thumb` : '';
         const nm = cellName(c) + (c.missing ? ' — ' + T('plugin.stills.gcell_missing','introuvable') : '');
-        return `<button type="button" class="ctl-push ctl-push--tile stl-cell${c.missing ? ' is-missing' : ''}" data-cell="${i}" aria-pressed="false"${G.prep ? ' draggable="true"' : ''}
+        return `<button type="button" class="ctl-push ctl-push--tile stl-cell${c.missing ? ' is-missing' : ''}" data-cell="${i}" aria-pressed="false" draggable="true"
           aria-label="${escH(T('plugin.stills.gcell_aria','Case {n} : {name}').replace('{n}', i + 1).replace('{name}', nm))}">
           ${thumb ? `<img src="${thumb}" alt="" loading="lazy" decoding="async">` : '<span></span>'}
           <span class="ctl-push__foot"><span>${escH(nm)}</span><span class="ctl-flag ctl-flag--1">PVW</span><span class="ctl-flag ctl-flag--2">PGM</span>${kb}</span>
@@ -470,8 +471,8 @@ window.MXLPlugins["stills"] = {
       cellMenu(b, i);
     });
     gel.addEventListener('dragstart', e => {
-      const b = e.target.closest('[data-cell]'); if(!b || !G.prep) return;
-      e.dataTransfer.setData('application/x-stills-cell', b.dataset.cell); e.dataTransfer.effectAllowed = 'move';
+      const b = e.target.closest('[data-cell]'); if(!b) return;          // vers une autre case (préparation) ou une sortie AUX
+      e.dataTransfer.setData('application/x-stills-cell', b.dataset.cell); e.dataTransfer.effectAllowed = 'copyMove';
     });
     const accepts = dt => [...(dt.types || [])].some(t => t === 'application/x-stills-cell' || t === 'application/x-bobi-assets' || t === 'application/x-bobi-asset');
     gel.addEventListener('dragover', e => {
@@ -510,6 +511,69 @@ window.MXLPlugins["stills"] = {
       if(G.open.length) await listGrids();
       setView(v); await loadGrid();
     })();
+
+    // ── Sorties AUX (2026-11-14) : 0 à 4 selon le réglage du conteneur, en petit dans le coin. Chacune
+    // garde l'image qu'on y dépose (bibliothèque, case de grille, ou la preview) — coupe franche.
+    const AX = {n:-1, gen:[]};
+    const auxBox = $('.stl-aux');
+    async function auxPost(n, body){
+      try{
+        const r = await (await api('/aux', Object.assign({n}, body))).json();
+        if(!r.ok) errToast(r);
+      }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
+      setTimeout(refresh, 150);
+    }
+    function auxRender(s){
+      const n = s.aux_count || 0, kv = $('.stl-viewkey').checked ? 'key' : 'fill';
+      if(n !== AX.n){
+        AX.n = n; AX.gen = [];
+        auxBox.hidden = !n;
+        auxBox.innerHTML = Array.from({length:n}, (_, i) => `<figure class="stl-aux-out" data-aux="${i + 1}">
+            <div class="stl-aux-scr"><img alt="" hidden><span>${escH(T('plugin.stills.aux_drop','Glisser une image ici'))}</span></div>
+            <figcaption><strong>AUX ${i + 1}</strong><span></span>
+              <button type="button" class="ctl-push" data-aux-pv title="${escH(T('plugin.stills.aux_from_pv','Mettre l\'image de la preview sur cette sortie'))}">${escH(T('plugin.stills.aux_pv','PVW'))}</button>
+              <button type="button" class="ctl-push" data-aux-clear aria-label="${escH(T('plugin.stills.aux_clear','Vider la sortie (noir)'))}">✕</button>
+            </figcaption></figure>`).join('');
+      }
+      (s.aux || []).forEach((fr, i) => {
+        const fig = auxBox.querySelector(`[data-aux="${i + 1}"]`); if(!fig) return;
+        const img = fig.querySelector('img'), hint = fig.querySelector('.stl-aux-scr > span'), g = (s.aux_gen || [])[i] + '-' + kv;
+        if(fr.file){ if(AX.gen[i] !== g){ AX.gen[i] = g; img.src = `/api/containers/${vmid}/plugin/aux.jpg?n=${i + 1}&view=${kv}&g=${g}`; } img.hidden = false; hint.hidden = true; }
+        else { img.hidden = true; hint.hidden = false; AX.gen[i] = null; }
+        const err = (s.aux_error || [])[i];
+        fig.querySelector('figcaption > span').textContent = err ? '⚠ ' + err : (fr.file ? fr.file.split('/').pop() : '');
+        fig.querySelector('[data-aux-clear]').disabled = !fr.file;
+        fig.title = (s.aux_shm || [])[i] || '';
+      });
+    }
+    auxBox.addEventListener('click', e => {
+      const fig = e.target.closest('[data-aux]'); if(!fig) return;
+      const n = +fig.dataset.aux;
+      if(e.target.closest('[data-aux-pv]')) auxPost(n, {from:'preview'});
+      else if(e.target.closest('[data-aux-clear]')) auxPost(n, {file:''});
+    });
+    const auxAccepts = dt => [...(dt.types || [])].some(t => ['application/x-stills-cell', 'application/x-bobi-media', 'application/x-bobi-asset'].includes(t));
+    auxBox.addEventListener('dragover', e => {
+      const fig = e.target.closest('[data-aux]'); if(!fig || !auxAccepts(e.dataTransfer)) return;
+      e.preventDefault(); auxBox.querySelectorAll('.is-drop').forEach(x => x !== fig && x.classList.remove('is-drop')); fig.classList.add('is-drop');
+    });
+    auxBox.addEventListener('dragleave', e => { const fig = e.target.closest('[data-aux]'); if(fig && !fig.contains(e.relatedTarget)) fig.classList.remove('is-drop'); });
+    auxBox.addEventListener('drop', async e => {
+      const fig = e.target.closest('[data-aux]'); if(!fig) return;
+      e.preventDefault(); fig.classList.remove('is-drop');
+      const n = +fig.dataset.aux, dt = e.dataTransfer, cell = dt.getData('application/x-stills-cell');
+      if(cell !== '' && G.grid){                         // une case de grille : son image ET son cadrage
+        const c = G.grid.cells[+cell]; if(!c) return;
+        let p = cellPath(c);
+        if(!p && c.asset) p = await ml.fetchAsset(c.asset);
+        if(p) auxPost(n, {file:p, fit:c.fit, x:c.x, y:c.y, size:c.size});
+        return;
+      }
+      let p = dt.getData('application/x-bobi-media');    // une image de la bibliothèque : le cadrage réglé
+      const aid = dt.getData('application/x-bobi-asset');
+      if(!p && aid) p = await ml.fetchAsset(aid);
+      if(p) auxPost(n, Object.assign({file:p}, frameNow()));
+    });
 
     // Raccourcis clavier : Espace = TAKE, Entrée = CUT, ← → = image précédente / suivante (ordre de la
     // bibliothèque affichée), D = rappel de l'image par défaut. Actifs tant que ce panneau est affiché,

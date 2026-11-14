@@ -114,5 +114,9 @@
   "plugin.stills.gcell_label": "Nommer la case…",
   "plugin.stills.gcell_label_t": "Nom affiché sur la case (vide : nom de l'image)",
   "plugin.stills.gcell_clear": "Vider la case",
-  "plugin.stills.gcell_pick_hint": "Choisissez une image dans la bibliothèque, puis touchez la case"
+  "plugin.stills.gcell_pick_hint": "Choisissez une image dans la bibliothèque, puis touchez la case",
+  "plugin.stills.aux_drop": "Glisser une image ici",
+  "plugin.stills.aux_from_pv": "Mettre l'image de la preview sur cette sortie",
+  "plugin.stills.aux_pv": "PVW",
+  "plugin.stills.aux_clear": "Vider la sortie (noir)"
 }

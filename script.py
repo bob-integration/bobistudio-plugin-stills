@@ -215,6 +215,13 @@ def _write_field(vw, src, parity):
 
 FILL_SHM = HOSTNAME
 KEY_SHM  = HOSTNAME + "_key"
+# AUX outputs (0.19.14): 0 to 4 extra Fill + Key pairs, each holding its own image on air,
+# outside PVW/PGM. Their number is a deployment setting (new flows: redeploy).
+try:
+    AUX_N = max(0, min(4, int(CONFIG.get("aux_outputs") or 0)))
+except (TypeError, ValueError):
+    AUX_N = 0
+AUX_SHM = [(HOSTNAME + "_aux%d" % (i + 1), HOSTNAME + "_aux%d_key" % (i + 1)) for i in range(AUX_N)]
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tif", ".tiff")
 
@@ -236,6 +243,7 @@ def _norm_frame(d):
         return {{"file": "", "fit": "native", "x": 0.0, "y": 0.0, "size": 100.0}}
 
 
+_PERSISTED = CONFIG.get("stills_state") if isinstance(CONFIG.get("stills_state"), dict) else {{}}
 state_lock = threading.Lock()
 state = {{
     "folder": CONFIG.get("folder") or "",
@@ -251,9 +259,10 @@ state = {{
     # l'antenne. `take_direct` = ancien comportement (choisir = antenne). Défaut : mode Take.
     "take_direct": _as_bool_cfg(CONFIG.get("take_direct"), default=False),
     "preview": {{"file": "", "fit": "native", "x": 0.0, "y": 0.0, "size": 100.0}},
-    # Default image, recalled in one gesture (key, macro). Persisted by the orchestrator
-    # (`control.persist`, param `default_image`): set here, it survives a redeploy.
-    "default": _norm_frame(CONFIG.get("default_image")),
+    # Default image, recalled in one gesture (key, macro), and the AUX images. Persisted by the
+    # orchestrator (`control.persist`, param `stills_state`): set here, they survive a redeploy.
+    "default": _norm_frame(_PERSISTED.get("default") or CONFIG.get("default_image")),
+    "aux": [_norm_frame(x) for x in (list(_PERSISTED.get("aux") or []) + [None] * AUX_N)[:AUX_N]],
 }}
 
 _BLACK_B = (16 << (BIT_DEPTH - 8)).to_bytes(_BPS, "little")   # Y noir studio (16/64/256)
@@ -522,6 +531,38 @@ prog_lock = threading.Lock()
 prog = {{"gen": 0, "rgba": None, "prev": None, "meta": None, "since": None}}
 prev_lock = threading.Lock()
 prev = {{"gen": 0, "rgba": None, "meta": None, "error": ""}}
+# What each AUX output carries (cut only, no fade): YUV bytes for the writers, the RGBA canvas
+# for its monitor, a generation for the JPEG cache.
+aux_lock = threading.Lock()
+aux = [{{"fill": _black_fill(), "key": _black_key(), "rgba": None, "meta": None, "gen": 0, "error": ""}}
+       for _ in range(AUX_N)]
+
+
+def _aux_set(i, fr):
+    """Puts frame `fr` ({{file, fit, x, y, size}}; empty file = black, transparent) on AUX i."""
+    if fr["file"]:
+        canvas, meta = _compose(fr["file"], fr["fit"], fr["x"], fr["y"], fr["size"])
+        if canvas is None:
+            with aux_lock:
+                aux[i]["error"] = meta
+            return False, meta
+        fb, kb = _rgb_to_yuv420(canvas[:, :, :3]), _alpha_to_yuv420(canvas[:, :, 3])
+    else:
+        canvas, meta, fb, kb = None, None, _black_fill(), _black_key()
+    with state_lock:
+        state["aux"][i] = fr
+    with aux_lock:
+        aux[i].update(fill=fb, key=kb, rgba=canvas, meta=meta, error="")
+        aux[i]["gen"] += 1
+    return True, "ok"
+
+
+def _aux_jpeg(i, view):
+    with aux_lock:
+        gen, cur = aux[i]["gen"], aux[i]["rgba"]
+    if cur is None:
+        return None
+    return _cached_jpeg("aux%d" % i, gen, view, None, lambda: _jpeg_of(_small(cur), view))
 _jpeg_cache = {{}}          # (origine, gen, vue, pas de fondu) → bytes ; une entrée par origine+vue
 _jpeg_lock = threading.Lock()
 _jpeg_stats = {{"encodes": 0}}
@@ -654,6 +695,12 @@ def _feed(inst, opened):
     key_w  = bobimxl.Writer(inst, KEY_SHM,  WIDTH, HEIGHT, CHROMA, BIT_DEPTH,
                             FPS_NUM, FPS_DEN, interlace=SCAN, **_slkw)
     opened.append(key_w)
+    aux_w = []
+    for fname, kname in AUX_SHM:
+        pair = tuple(bobimxl.Writer(inst, nm, WIDTH, HEIGHT, CHROMA, BIT_DEPTH, FPS_NUM, FPS_DEN,
+                                    interlace=SCAN, **_slkw) for nm in (fname, kname))
+        opened.extend(pair)
+        aux_w.append(pair)
     if SLICE_MODE:
         log("slice_mode %s : sorties %s/%s %s" % ("actif" if V_SLICE_H else "INÉLIGIBLE",
             FILL_SHM, KEY_SHM,
@@ -684,6 +731,27 @@ def _feed(inst, opened):
             return True
         held[addr] = payload if cacheable else None
         return False
+
+    def _put_still(w, payload, idx):
+        """One still image on writer `w` (AUX outputs): fields if interlaced, bands in slice mode,
+        and no copy at all when the ring slot already holds it."""
+        if INTERLACED:
+            src = np.frombuffer(payload, dtype=np.uint8)
+            first = 1 if FIELD_ORDER == "bff" else 0
+            for fi, par in (((2 * idx) if idx is not None else None, first),
+                            ((2 * idx + 1) if idx is not None else None, 1 - first)):
+                _, gi_, vw_ = w.open_grain(index=fi)
+                _write_field(vw_, src, par)
+                w.commit(gi_)
+            return
+        _, gi_, vw_ = w.open_grain(index=idx)
+        if _held(vw_, payload, True):
+            w.commit(gi_)
+        elif V_SLICE_H:
+            _emit_grain_sliced(w, gi_, vw_, payload)
+        else:
+            bobimxl.blit(vw_, np.frombuffer(payload, dtype=np.uint8))
+            w.commit(gi_)
 
     def _emit(w, payload, idx):
         _, gi, view = w.open_grain(index=idx)
@@ -787,6 +855,12 @@ def _feed(inst, opened):
             if not _held(view_k, kb, still):
                 bobimxl.blit(view_k, np.frombuffer(kb, dtype=np.uint8))
             key_w.commit(gi_k)
+        if aux_w:
+            with aux_lock:
+                payloads = [(a["fill"], a["key"]) for a in aux]
+            for (wf, wk), (pf, pk) in zip(aux_w, payloads):
+                _put_still(wf, pf, idx)
+                _put_still(wk, pk, idx)
         win_cnt += 1
         el = time.time() - win_start
         # frame_index à CHAQUE trame : publié une fois par fenêtre d'une seconde, il datait de 0 à
@@ -839,6 +913,8 @@ class ControlHandler(BaseHTTPRequestHandler):
         if u.path == "/state":
             with state_lock: s = dict(state)
             with metrics_lock: m = dict(metrics)
+            for i in range(4):
+                s["aux%d_file" % (i + 1)] = s["aux"][i]["file"] if i < AUX_N else ""
             s.update({{"fps": m["fps"], "frame_index": m["frame_index"],
                        "media_root": MEDIA_ROOT, "plugin_version": PLUGIN_VERSION,
                        "fill_shm": FILL_SHM, "key_shm": KEY_SHM,
@@ -848,12 +924,34 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "program_file": s.get("file", ""),      # image À L'ANTENNE
                        "preview_file": (s.get("preview") or {{}}).get("file", ""),   # image en PREVIEW
                        "default_file": (s.get("default") or {{}}).get("file", ""),   # image par défaut
+                       "aux_count": AUX_N,
+                       "aux_shm": [f for f, _k in AUX_SHM],
+                       "aux_gen": [a["gen"] for a in aux],
+                       "aux_error": [a["error"] for a in aux],
                        "on_air_since": prog["since"], "program_gen": prog["gen"],
                        "program_meta": prog["meta"], "preview_meta": prev["meta"],
                        "preview_error": prev["error"], "preview_gen": prev["gen"],
                        "jpeg_encodes": _jpeg_stats["encodes"],   # preuve : pas d'encodage en continu
                        "mxl_lib": _mxl_lib_state()}})
             self._json(200, s)
+        elif u.path == "/persisted":
+            # Persistence snapshot (`control.persist`): exactly what goes into params.stills_state.
+            with state_lock:
+                d = {{"default": dict(state["default"]), "aux": [dict(x) for x in state["aux"]]}}
+            self._json(200, d)
+        elif u.path == "/aux.jpg":
+            try:
+                i = int((q.get("n") or ["1"])[0]) - 1
+            except ValueError:
+                i = -1
+            if not 0 <= i < AUX_N:
+                return self._json(404, {{"error": "pas de sortie AUX %s" % (i + 1)}})
+            data = _aux_jpeg(i, "key" if (q.get("view") or [""])[0] == "key" else "fill")
+            if data is None:
+                self.send_response(204); self.end_headers(); return
+            self.send_response(200); self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(data))); self.end_headers()
+            self.wfile.write(data)
         elif u.path == "/default":
             # Persistence snapshot (`control.persist`): exactly what goes into params.default_image.
             with state_lock: d = dict(state["default"])
@@ -938,6 +1036,8 @@ class ControlHandler(BaseHTTPRequestHandler):
             self._json(*_air_swapping(d))
         elif u.path == "/default/set":
             self._json(*_default_set(self._read()))
+        elif u.path == "/aux":
+            self._json(*_aux_post(self._read()))
         elif u.path == "/step":
             self._json(*_step(self._read()))
         elif u.path == "/take_direct":
@@ -1042,6 +1142,25 @@ def _default_set(b):
     return 200, {{"ok": True, "default": d}}
 
 
+def _aux_post(b):
+    """/aux {{n: 1..AUX_N, file, fit, x, y, size}} — or {{n, from: "preview"|"program"}} ; an
+    empty file clears the output (black, transparent). Cut only: an AUX holds an image, it does
+    not dissolve."""
+    try:
+        i = int(b.get("n")) - 1
+    except (TypeError, ValueError):
+        i = -1
+    if not 0 <= i < AUX_N:
+        return 400, {{"ok": False, "detail": "sortie AUX inconnue (%d configurée(s))" % AUX_N}}
+    src = b.get("from")
+    with state_lock:
+        fr = _norm_frame(state["preview"] if src == "preview" else state if src == "program" else b)
+    if src and not fr["file"]:
+        return 400, {{"ok": False, "detail": "aucune image en %s" % src}}
+    ok, detail = _aux_set(i, fr)
+    return (200 if ok else 400), {{"ok": ok, "detail": detail, "n": i + 1, "file": fr["file"]}}
+
+
 def _step(b):
     """/step {{delta: +1|-1}} : image suivante / précédente du DOSSIER de l'image en preview (à
     défaut, de celle à l'antenne), par ordre de nom. Elle passe en preview — à l'antenne en
@@ -1093,6 +1212,14 @@ def _supervised(fn):
     threading.Thread(target=_run, name=fn.__name__, daemon=True).start()
 
 _supervised(feeder)
+
+# AUX : chaque sortie reprend l'image qu'elle portait (persistée).
+for _i in range(AUX_N):
+    if state["aux"][_i]["file"]:
+        try:
+            _aux_set(_i, state["aux"][_i])
+        except Exception as e:
+            log("aux %d initial: %s" % (_i + 1, e), "warning")
 
 # Rendu initial si une image est déjà configurée au déploiement ; sinon l'image par défaut.
 if not (state["file"] or "").strip() and state["default"]["file"]:

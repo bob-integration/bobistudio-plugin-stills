@@ -29,6 +29,12 @@ Une grille est une fiche de la base des médias, comme une playlist : elle se ra
 
 **Préparer** : glissez des images de la bibliothèque sur les cases (plusieurs à la fois remplissent les cases vides), glissez une case sur une autre pour les échanger. Au doigt : choisissez l'image dans la bibliothèque, puis touchez la case. Le menu d'une case règle son cadrage (celui des réglages Cadrage et Position), son nom, ou la vide. Colonnes et rangées se choisissent en haut. L'antenne n'est pas touchée pendant la préparation, et tout est enregistré au fil des gestes.
 
+## Sorties AUX
+
+Dans les réglages du conteneur, **Sorties AUX** ajoute de 1 à 4 sorties supplémentaires (Fill + Key chacune, flux `<nom>_aux1`, `<nom>_aux1_key`…), hors PVW / PGM. Changer leur nombre redéploie le conteneur.
+
+Elles apparaissent en petit dans le panneau. Chacune garde à l'antenne l'image qu'on y dépose, en permanence, sans fondu : glissez-y une image de la bibliothèque (avec le cadrage réglé) ou une case de grille (avec le cadrage de la case). **PVW** y met l'image de la preview ; **✕** la remet au noir. Leurs images sont enregistrées avec le conteneur : un redéploiement les garde.
+
 ## Image par défaut
 
 **Définir** fait de l'image en preview, avec son cadrage, l'image par défaut. **Rappeler** (touche **D**) la met aussitôt à l'antenne, avec le fondu réglé ; l'image qui y était passe en preview. Elle est enregistrée avec le conteneur : un redéploiement la garde. Au démarrage, si aucune image n'est à l'antenne, c'est elle qui sort.
@@ -72,7 +78,7 @@ Le réglage **Fondu (ms)** donne la durée du fondu enchaîné au changement d'i
 
 ## Macros
 
-Actions : preview d'une image, Take, Cut, afficher une image, image suivante / précédente, rappeler et définir l'image par défaut ; réglage Take direct. L'état lisible indique l'image en preview, l'image à l'antenne et l'image par défaut. Une case d'une grille s'affiche par l'action « Afficher une case d'une grille » de la base des médias. Pour les macros, « suivante / précédente » suit l'ordre des noms dans le dossier de l'image en preview : une macro ne voit pas la bibliothèque affichée.
+Actions : preview d'une image, Take, Cut, afficher une image, image suivante / précédente, rappeler et définir l'image par défaut ; réglage Take direct. L'état lisible indique l'image en preview, l'image à l'antenne et l'image par défaut. Une case d'une grille s'affiche par l'action « Afficher une case d'une grille » de la base des médias, en preview, à l'antenne ou sur une sortie AUX. Action « Mettre une image sur une sortie AUX » ; état « Image sur AUX 1 à 4 ». Pour les macros, « suivante / précédente » suit l'ordre des noms dans le dossier de l'image en preview : une macro ne voit pas la bibliothèque affichée.
 
 ## Cas d'usage typique
 

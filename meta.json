@@ -1,7 +1,13 @@
 {
-  "version": "0.19.13",
+  "version": "0.19.14",
   "date": "2026-11-14",
   "changes": {
+    "Sorties AUX (0.19.14)": [
+      "Réglage « Sorties AUX » du conteneur, de 0 à 4 : autant de sorties supplémentaires (Fill + Key chacune), hors PVW / PGM. Changer leur nombre redéploie le conteneur.",
+      "Chaque sortie garde à l'antenne l'image qu'on y dépose, en permanence, en coupe franche. Les sorties apparaissent en petit dans le panneau : on y glisse une image de la bibliothèque ou une case de grille, « PVW » y met l'image de la preview, ✕ les remet au noir.",
+      "Leurs images sont enregistrées avec le conteneur, comme l'image par défaut : un redéploiement les garde. Une image fixe n'est copiée qu'une fois par case de l'anneau : une sortie AUX ne coûte presque rien tant que son image ne change pas.",
+      "Macros : action « Mettre une image sur une sortie AUX », état « Image sur AUX 1 à 4 » ; « Afficher une case d'une grille » peut viser une sortie AUX."
+    ],
     "Grilles d'images, façon sampleur (0.19.13)": [
       "Vue « Grille » à côté de la bibliothèque : des cases figées qui remplissent l'écran, sans défiler. Un clic (ou le pavé numérique, 1 à 9 et 0 pour les dix premières cases) met l'image de la case en preview, ou à l'antenne en Take direct, avec le cadrage de la case. Les cases à l'antenne et en preview sont marquées.",
       "Une grille est une fiche de la base des médias, comme une playlist : rangée dans les bins et les projets, partageable, exportable et importable. Chaque utilisateur ouvre les siennes sur le panneau, en onglets ; elles le suivent d'un poste à l'autre.",

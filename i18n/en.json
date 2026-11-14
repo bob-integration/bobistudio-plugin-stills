@@ -114,5 +114,9 @@
   "plugin.stills.gcell_label": "Name the cell…",
   "plugin.stills.gcell_label_t": "Name shown on the cell (empty: the image's name)",
   "plugin.stills.gcell_clear": "Empty the cell",
-  "plugin.stills.gcell_pick_hint": "Pick an image in the library, then tap the cell"
+  "plugin.stills.gcell_pick_hint": "Pick an image in the library, then tap the cell",
+  "plugin.stills.aux_drop": "Drop an image here",
+  "plugin.stills.aux_from_pv": "Put the preview image on this output",
+  "plugin.stills.aux_pv": "PVW",
+  "plugin.stills.aux_clear": "Clear the output (black)"
 }
