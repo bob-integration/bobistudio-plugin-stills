@@ -197,6 +197,7 @@ window.MXLPlugins["stills"] = {
         const pvf = s.preview_file || '';
         if(lastPv !== null && pvf !== lastPv && pvf !== selected){ selected = pvf; adoptPv = true; ml.markCurrent ? ml.markCurrent() : ml.render(); }
         lastPv = pvf;
+        gridTally(s);
         if(adoptPv){
           adoptPv = false; const p = s.preview || {};
           if(pvf){ setFit(p.fit || 'native'); $('.stl-x').value = p.x ?? 0; $('.stl-y').value = p.y ?? 0; $('.stl-size').value = p.size ?? 100; }
@@ -248,6 +249,268 @@ window.MXLPlugins["stills"] = {
       refresh();
     };
 
+    // ── Grille (2026-11-14) : des cases figées, plein écran, façon sampleur. Une grille est une FICHE
+    // de la base des médias (bins, partage, export) ; chaque utilisateur ouvre les siennes sur ce
+    // panneau (retenu côté serveur, d'un poste à l'autre). Une case = une image + son cadrage.
+    const escH = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const G = {view:'lib', open:[], names:{}, active:null, grid:null, prep:false, saveT:null, pg:'', pv:''};
+    const gwrap = $('.stl-grid-wrap'), gel = $('.stl-grid'), libHost = $('.stl-lib-host'), browse = $('.stl-browse');
+    const VIEW_KEY = 'stills-view-' + vmid;
+    const KEY_OF = i => i < 9 ? String(i + 1) : i === 9 ? '0' : '';
+    async function gcall(method, url, body){
+      try{
+        const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: body === undefined ? undefined : JSON.stringify(body)});
+        const j = await r.json().catch(() => ({}));
+        if(!r.ok){ toast(T('plugin.stills.err_prefix','Erreur : ') + (j.error || j.missing_permission || ('HTTP ' + r.status)), 'error'); return null; }
+        return j;
+      }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'), 'error'); return null; }
+    }
+    async function listGrids(){
+      const j = await gcall('POST', '/api/media/search', {vmid, query:{kinds:['grid']}});
+      const out = ((j || {}).assets || []).sort((a, b) => a.name.localeCompare(b.name));
+      out.forEach(a => { G.names[a.id] = a.name; });
+      return out;
+    }
+    const saveOpen = () => gcall('PUT', '/api/media/grids/open', {vmid, open:G.open, active:G.active});
+    async function loadGrid(){
+      G.grid = null;
+      if(G.active){
+        const r = await fetch(`/api/media/grids/${encodeURIComponent(G.active)}?vmid=${encodeURIComponent(vmid)}`).catch(() => null);
+        if(r && r.ok){ G.grid = await r.json(); G.names[G.grid.id] = G.grid.name; }
+        else if(r && r.status === 404){          // supprimée, ou plus visible : on la ferme
+          G.open = G.open.filter(x => x !== G.active); G.active = G.open[0] || null; saveOpen();
+          if(G.active) return loadGrid();
+        }
+      }
+      renderTabs(); renderGrid();
+    }
+    async function openGrid(id){
+      if(!G.open.includes(id)) G.open.push(id);
+      G.active = id; await saveOpen(); await loadGrid();
+    }
+    function closeGrid(id){
+      G.open = G.open.filter(x => x !== id);
+      if(G.active === id) G.active = G.open[0] || null;
+      saveOpen(); loadGrid();
+    }
+    function renderTabs(){
+      const box = $('.stl-gtabs');
+      box.innerHTML = G.open.map(id => `<button type="button" role="tab" class="ctl-push" data-gid="${escH(id)}" aria-selected="${id === G.active}">${escH(G.names[id] || '…')}</button>`).join('');
+      box.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => { G.active = b.dataset.gid; saveOpen(); loadGrid(); });
+      const g = G.grid, opt = (n, lo, hi) => Array.from({length:hi - lo + 1}, (_, k) => `<option${k + lo === n ? ' selected' : ''}>${k + lo}</option>`).join('');
+      $('.stl-gcols').innerHTML = opt(g ? g.cols : 6, 1, 10);
+      $('.stl-grows').innerHTML = opt(g ? g.rows : 4, 1, 8);
+      $('.stl-gsize').hidden = !(G.prep && g);
+      $('.stl-gmore').hidden = !g;
+    }
+    function cellName(c){ return c.label || c.name || (c.file || '').split('/').pop() || '?'; }
+    function renderGrid(){
+      const g = G.grid;
+      $('.stl-gempty').hidden = !!g;
+      $('.stl-ghint').hidden = !(g && G.prep);
+      gel.hidden = !g;
+      if(!g){ gel.innerHTML = ''; return; }
+      gel.style.setProperty('--stl-gcols', g.cols); gel.style.setProperty('--stl-grows', g.rows);
+      gel.innerHTML = g.cells.map((c, i) => {
+        const k = KEY_OF(i), kb = k ? `<kbd title="${escH(T('plugin.stills.numpad','Pavé numérique'))} ${k}">${k}</kbd>` : '';
+        if(!c) return `<button type="button" class="ctl-push ctl-push--tile stl-cell is-empty" data-cell="${i}"${G.prep ? '' : ' disabled'}>${i + 1}${G.prep ? '' : ' · ' + escH(T('plugin.stills.gcell_empty','vide'))}</button>`;
+        if(c.hidden) return `<button type="button" class="ctl-push ctl-push--tile stl-cell is-missing" data-cell="${i}" disabled>${escH(T('plugin.stills.gcell_hidden','image hors de votre portée'))}</button>`;
+        const thumb = c.asset ? `/api/media/assets/${encodeURIComponent(c.asset)}/thumb` : '';
+        const nm = cellName(c) + (c.missing ? ' — ' + T('plugin.stills.gcell_missing','introuvable') : '');
+        return `<button type="button" class="ctl-push ctl-push--tile stl-cell${c.missing ? ' is-missing' : ''}" data-cell="${i}" aria-pressed="false"${G.prep ? ' draggable="true"' : ''}
+          aria-label="${escH(T('plugin.stills.gcell_aria','Case {n} : {name}').replace('{n}', i + 1).replace('{name}', nm))}">
+          ${thumb ? `<img src="${thumb}" alt="" loading="lazy" decoding="async">` : '<span></span>'}
+          <span class="ctl-push__foot"><span>${escH(nm)}</span><span class="ctl-flag ctl-flag--1">PVW</span><span class="ctl-flag ctl-flag--2">PGM</span>${kb}</span>
+        </button>`;
+      }).join('');
+      gel.style.setProperty('--stl-grid-top', Math.round(gel.getBoundingClientRect().top + window.scrollY + 16) + 'px');
+      paintTally();
+    }
+    const cellPath = c => c && !c.hidden ? (c.local_path || (!c.asset ? c.file : '') || '') : '';
+    function paintTally(){
+      if(!G.grid) return;
+      gel.querySelectorAll('[data-cell]').forEach(b => {
+        const p = cellPath(G.grid.cells[+b.dataset.cell]);
+        b.classList.toggle('on2', !!p && p === G.pg);
+        if(b.hasAttribute('aria-pressed')) b.setAttribute('aria-pressed', String(!!p && p === G.pv));
+      });
+    }
+    function gridTally(s){ G.pg = s.file || ''; G.pv = s.preview_file || ''; paintTally(); }
+
+    async function playCell(i){
+      const g = G.grid, c = g && g.cells[i];
+      if(!c || c.hidden) return;
+      if(c.missing){ toast(T('plugin.stills.gcell_missing_t','Cette image n\'est plus dans la base'), 'error'); return; }
+      let path = cellPath(c);
+      if(!path && c.asset){
+        if(!(c.available_nodes || []).length){ toast(T('plugin.stills.gcell_nocopy','Aucune copie de cette image à rapatrier'), 'error'); return; }
+        path = await ml.fetchAsset(c.asset);
+        if(path){ c.local_path = path; loadGrid(); }
+      }
+      if(!path) return;
+      selected = path;
+      setFit(c.fit || 'native'); $('.stl-x').value = c.x || 0; $('.stl-y').value = c.y || 0; $('.stl-size').value = c.size || 100;
+      if(ml.markCurrent) ml.markCurrent();
+      choose();
+    }
+    function gridStep(d){
+      const g = G.grid; if(!g) return false;
+      const filled = g.cells.map((c, i) => cellPath(c) ? i : -1).filter(i => i >= 0);
+      const cur = filled.findIndex(i => cellPath(g.cells[i]) === selected);
+      const n = cur < 0 ? (d > 0 ? 0 : filled.length - 1) : cur + d;
+      if(n < 0 || n >= filled.length) return false;
+      playCell(filled[n]); return true;
+    }
+
+    // ── Préparation : chaque geste modifie la fiche, enregistrée aussitôt (par lot de 600 ms).
+    const bare = c => c ? {asset:c.asset || null, file:c.file || '', label:c.label || '', fit:c.fit || 'native', x:c.x || 0, y:c.y || 0, size:c.size || 100} : null;
+    function changed(){
+      renderGrid();
+      clearTimeout(G.saveT);
+      const g = G.grid;
+      G.saveT = setTimeout(async () => {
+        const ok = await gcall('PUT', '/api/media/grids/' + encodeURIComponent(g.id), {doc:{cols:g.cols, rows:g.rows, cells:g.cells.map(bare)}});
+        if(ok && G.grid && G.grid.id === g.id) loadGrid();        // noms et copies locales des nouvelles cases
+      }, 600);
+    }
+    const frameNow = () => ({fit:fit(), x:xv(), y:yv(), size:sv()});
+    function place(ids, i){
+      const g = G.grid; if(!g || !ids.length) return;
+      g.cells[i] = Object.assign({asset:ids[0]}, frameNow());
+      let k = i + 1;
+      for(const id of ids.slice(1)){
+        while(k < g.cells.length && g.cells[k]) k++;
+        if(k >= g.cells.length){ toast(T('plugin.stills.gfull','Plus de case vide : le reste n\'est pas placé'), 'warning'); break; }
+        g.cells[k++] = Object.assign({asset:id}, frameNow());
+      }
+      changed();
+    }
+    function resize(cols, rows){
+      const g = G.grid, out = new Array(cols * rows).fill(null), lost = [];
+      g.cells.forEach((c, i) => { if(!c) return; const r = Math.floor(i / g.cols), q = i % g.cols;
+        if(r < rows && q < cols) out[r * cols + q] = c; else lost.push(i + 1); });
+      if(lost.length){ toast(T('plugin.stills.gshrink','Videz d\'abord les cases {n} : elles sortiraient de la grille').replace('{n}', lost.join(', ')), 'warning'); renderTabs(); return; }
+      g.cols = cols; g.rows = rows; g.cells = out; changed();
+    }
+    $('.stl-gcols').onchange = e => resize(+e.target.value, G.grid.rows);
+    $('.stl-grows').onchange = e => resize(G.grid.cols, +e.target.value);
+
+    const dlg = $('.stl-gdlg');
+    function askName(title, value){
+      return new Promise(ok => {
+        $('.stl-gdlg-title').textContent = title; const inp = $('.stl-gdlg-name'); inp.value = value || '';
+        const done = v => { dlg.onclose = null; ok(v); };
+        $('.stl-gdlg-cancel').onclick = () => { dlg.close(); done(null); };
+        dlg.querySelector('form').onsubmit = () => { const v = inp.value.trim(); setTimeout(() => done(v || null)); };
+        dlg.onclose = () => done(null);
+        dlg.showModal(); inp.focus(); inp.select();
+      });
+    }
+    async function newGrid(){
+      const name = await askName(T('plugin.stills.gnew_title','Nom de la nouvelle grille'), '');
+      if(!name) return;
+      const j = await gcall('POST', '/api/media/grids', {name, vmid, doc:{cols:6, rows:4}});
+      if(!j) return;
+      G.names[j.id] = name; G.prep = true; await openGrid(j.id); setView('grid');
+    }
+    async function renameGrid(){
+      const g = G.grid; if(!g) return;
+      const name = await askName(T('plugin.stills.grename_title','Nouveau nom de la grille'), g.name);
+      if(!name || name === g.name) return;
+      if(await gcall('PUT', '/api/media/grids/' + encodeURIComponent(g.id), {doc:{cols:g.cols, rows:g.rows, cells:g.cells.map(bare)}, name})){
+        G.names[g.id] = name; loadGrid(); }
+    }
+    const imp = $('.stl-gimport');
+    imp.onchange = async () => {
+      const f = imp.files && imp.files[0]; if(!f) return;
+      let data; try{ data = JSON.parse(await f.text()); }catch(_){ toast(T('plugin.stills.gimport_bad','Fichier de grille illisible'), 'error'); return; }
+      const j = await gcall('POST', '/api/media/grids/import', {data, vmid});
+      if(!j) return;
+      const r = j.report || {};
+      toast(T('plugin.stills.gimported','Grille importée : {n} case(s), {u} image(s) introuvable(s)').replace('{n}', r.items || 0).replace('{u}', r.unresolved || 0), r.unresolved ? 'warning' : 'info');
+      await openGrid(j.id);
+    };
+    $('.stl-gopen').onclick = async e => {
+      const anchor = e.currentTarget, all = await listGrids();
+      ml.openMenu(anchor, [
+        {label:T('plugin.stills.gnew','Nouvelle grille…'), run:newGrid},
+        {label:T('plugin.stills.gimport','Importer un fichier de grille…'), run:() => { imp.value = ''; imp.click(); }},
+        {header: all.length ? T('plugin.stills.gopen_h','Ouvrir') : T('plugin.stills.gnone','Aucune grille pour l\'instant')},
+        ...all.map(a => ({label:(G.open.includes(a.id) ? '✓ ' : '') + a.name, run:() => openGrid(a.id)})),
+      ]);
+    };
+    $('.stl-gmore').onclick = e => {
+      const g = G.grid; if(!g) return;
+      ml.openMenu(e.currentTarget, [
+        {label:T('plugin.stills.grename','Renommer…'), run:renameGrid},
+        {label:T('plugin.stills.gexport','Exporter…'), run:() => { location.href = '/api/media/grids/' + encodeURIComponent(g.id) + '/export'; }},
+        {label:T('plugin.stills.gclose','Fermer l\'onglet'), run:() => closeGrid(g.id)},
+      ]);
+    };
+    $('.stl-gprep').onclick = () => { G.prep = !G.prep; $('.stl-gprep').setAttribute('aria-pressed', String(G.prep)); setView('grid'); renderTabs(); };
+    function cellMenu(btn, i){
+      const g = G.grid, c = g.cells[i];
+      const items = [];
+      if(c){
+        items.push({label:T('plugin.stills.gcell_frame','Cadrage actuel pour cette case'), run:() => { Object.assign(c, frameNow()); changed(); }});
+        items.push({label:T('plugin.stills.gcell_label','Nommer la case…'), run:async () => {
+          const v = await askName(T('plugin.stills.gcell_label_t','Nom affiché sur la case (vide : nom de l\'image)'), c.label || '');
+          if(v !== null){ c.label = v; changed(); } }});
+        items.push({label:T('plugin.stills.gcell_clear','Vider la case'), run:() => { g.cells[i] = null; changed(); }});
+      } else items.push({header:T('plugin.stills.gcell_pick_hint','Choisissez une image dans la bibliothèque, puis touchez la case')});
+      ml.openMenu(btn, items);
+    }
+    gel.addEventListener('click', e => {
+      const b = e.target.closest('[data-cell]'); if(!b || b.disabled) return;
+      const i = +b.dataset.cell;
+      if(!G.prep) return playCell(i);
+      // Préparation au doigt : une image choisie dans la bibliothèque, puis la case.
+      const sel = (ml.selected ? ml.selected() : []).filter(r => r.asset && (r.asset.tech || {}).kind !== 'grid').map(r => r.asset.id);
+      if(sel.length){ place(sel, i); if(ml.clearSelection) ml.clearSelection(); return; }
+      cellMenu(b, i);
+    });
+    gel.addEventListener('dragstart', e => {
+      const b = e.target.closest('[data-cell]'); if(!b || !G.prep) return;
+      e.dataTransfer.setData('application/x-stills-cell', b.dataset.cell); e.dataTransfer.effectAllowed = 'move';
+    });
+    const accepts = dt => [...(dt.types || [])].some(t => t === 'application/x-stills-cell' || t === 'application/x-bobi-assets' || t === 'application/x-bobi-asset');
+    gel.addEventListener('dragover', e => {
+      const b = e.target.closest('[data-cell]'); if(!b || !G.prep || !accepts(e.dataTransfer)) return;
+      e.preventDefault(); gel.querySelectorAll('.is-drop').forEach(x => x !== b && x.classList.remove('is-drop')); b.classList.add('is-drop');
+    });
+    gel.addEventListener('dragleave', e => { const b = e.target.closest('[data-cell]'); if(b && !b.contains(e.relatedTarget)) b.classList.remove('is-drop'); });
+    gel.addEventListener('drop', e => {
+      const b = e.target.closest('[data-cell]'); if(!b || !G.prep) return;
+      e.preventDefault(); b.classList.remove('is-drop');
+      const i = +b.dataset.cell, dt = e.dataTransfer, from = dt.getData('application/x-stills-cell');
+      if(from !== ''){ const j = +from, g = G.grid; if(j !== i){ [g.cells[i], g.cells[j]] = [g.cells[j], g.cells[i]]; changed(); } return; }
+      let ids = []; try{ ids = JSON.parse(dt.getData('application/x-bobi-assets') || '[]'); }catch(_){}
+      if(!ids.length && dt.getData('application/x-bobi-asset')) ids = [dt.getData('application/x-bobi-asset')];
+      place(ids, i);
+    });
+
+    function setView(v){
+      G.view = v; try{ localStorage.setItem(VIEW_KEY, v); }catch(_){}
+      const grid = v === 'grid';
+      $('.stl-view-lib').setAttribute('aria-selected', String(!grid)); $('.stl-view-grid').setAttribute('aria-selected', String(grid));
+      gwrap.hidden = !grid; $('.stl-gtabs').hidden = !grid; $('.stl-gtools').hidden = !grid;
+      libHost.hidden = grid && !G.prep;
+      browse.classList.toggle('is-prep', grid && G.prep);
+      if(grid){ renderTabs(); renderGrid(); }
+    }
+    $('.stl-view-lib').onclick = () => setView('lib');
+    $('.stl-view-grid').onclick = () => setView('grid');
+    (async () => {
+      let v = 'lib'; try{ v = localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'lib'; }catch(_){}
+      // Cœur sans les grilles (antérieur à elles) : pas d'onglet Grille, plutôt qu'un onglet en erreur.
+      const r = await fetch(`/api/media/grids/open?vmid=${encodeURIComponent(vmid)}`).catch(() => null);
+      if(!r || r.status === 404){ $('.stl-view').hidden = true; setView('lib'); return; }
+      const j = r.ok ? await r.json().catch(() => null) : null;
+      if(j){ G.open = j.open || []; G.active = j.active || null; }
+      if(G.open.length) await listGrids();
+      setView(v); await loadGrid();
+    })();
+
     // Raccourcis clavier : Espace = TAKE, Entrée = CUT, ← → = image précédente / suivante (ordre de la
     // bibliothèque affichée), D = rappel de l'image par défaut. Actifs tant que ce panneau est affiché,
     // jamais pendant une saisie, dans une fenêtre ouverte, ni avec Ctrl / Alt / Cmd.
@@ -257,6 +520,13 @@ window.MXLPlugins["stills"] = {
       if(t && t.closest && (t.closest('input,textarea,select,[contenteditable="true"],dialog') || (t !== document.body && !el.contains(t) && t.closest('[role="dialog"],.modal')))) return;
       if(document.querySelector('dialog[open]')) return;
       const k = e.key, go = f => { e.preventDefault(); f(); };
+      // Vue Grille : pavé numérique 1 à 9 et 0 = cases 1 à 10 ; flèches = case voisine.
+      if(G.view === 'grid' && !G.prep){
+        const m = /^Numpad([0-9])$/.exec(e.code || '');
+        if(m) return go(() => { const d = +m[1]; playCell(d === 0 ? 9 : d - 1); });
+        if(k === 'ArrowRight' || k === 'ArrowLeft') return go(() => {
+          if(!gridStep(k === 'ArrowRight' ? 1 : -1)) toast(T('plugin.stills.step_edge','Plus d\'image dans ce sens'), 'info'); });
+      }
       if(k === ' ') go(() => { if(!$('.stl-take').disabled) takeOrCut('/take'); });
       else if(k === 'Enter') go(() => { if(!$('.stl-cut').disabled) takeOrCut('/cut'); });
       else if(k === 'ArrowRight' || k === 'ArrowLeft') go(() => {

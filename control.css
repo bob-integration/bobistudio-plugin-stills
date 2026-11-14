@@ -71,7 +71,7 @@
 .stl-ctl.is-pgm-right { display:grid; grid-template-columns:minmax(0,1fr) 14px var(--stl-side-w, clamp(260px, 34%, 480px));
     grid-template-rows:auto auto 1fr; column-gap:4px; row-gap:10px; align-items:start; }
 .stl-ctl.is-pgm-right > .stl-project-banner, .stl-ctl.is-pgm-right > .stl-noproject-banner { grid-column:1 / -1; grid-row:1; }
-.stl-ctl.is-pgm-right > .stl-lib-host { grid-column:1; grid-row:2 / span 2; min-width:0; }
+.stl-ctl.is-pgm-right > .stl-browse { grid-column:1; grid-row:2 / span 2; min-width:0; }
 .stl-ctl.is-pgm-right > .stl-side { grid-column:3; grid-row:2; }
 .stl-ctl.is-pgm-right > .stl-side2 { grid-column:3; grid-row:3; }
 .stl-ctl.is-pgm-right > .stl-side-grip { grid-column:2; grid-row:2 / span 2; align-self:stretch; display:flex;
@@ -87,3 +87,29 @@
 .stl-ctl.is-pgm-right .stl-pane-pv { order:3; }
 .stl-ctl.is-pgm-right .stl-pane-pv .stl-screen, .stl-ctl.is-pgm-right .stl-pp-grip { display:none; }
 .stl-ctl.is-pgm-right .stl-pane-pv figcaption { margin:0; }
+
+/* Bibliothèque / Grille (2026-11-14). La grille remplit la place de la bibliothèque, sans défiler :
+   ses cases se partagent la hauteur visible (façon sampleur). En préparation, la bibliothèque
+   reste dessous pour y prendre les images. */
+.stl-browse { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.stl-browse-bar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.stl-view, .stl-gtabs { display:flex; flex-wrap:wrap; gap:4px; }
+.stl-gtools { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-left:auto; }
+.stl-gsize label { display:inline-flex; align-items:center; gap:4px; font-size:0.85em; }
+.stl-view [aria-selected="true"], .stl-gtabs [aria-selected="true"] { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+.stl-grid-wrap { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.stl-gempty, .stl-ghint { margin:0; font-size:0.85em; color:var(--text-muted); }
+.stl-grid { display:grid; gap:8px; grid-template-columns:repeat(var(--stl-gcols, 6), minmax(0, 1fr));
+    grid-template-rows:repeat(var(--stl-grows, 4), minmax(0, 1fr));
+    height:max(320px, calc(100vh - var(--stl-grid-top, 260px))); }
+.stl-ctl .stl-grid .stl-cell { width:auto; min-width:0; min-height:0; overflow:hidden; --ctl-tone:var(--bus-pvw); --ctl-tone2:var(--bus-pgm); }
+.stl-grid .stl-cell img { flex:1 1 auto; min-height:0; height:0; aspect-ratio:auto; }
+.stl-grid .stl-cell kbd { font:inherit; font-size:0.75em; padding:0 5px; border:1px solid var(--border); border-radius:3px; color:var(--text-muted); }
+.stl-grid .stl-cell.is-empty { border-style:dashed; background:transparent; justify-content:center; align-items:center; color:var(--text-muted); }
+.stl-grid .stl-cell.is-missing img { opacity:.35; }
+.stl-grid .stl-cell.is-drop { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
+.stl-browse.is-prep .stl-grid { height:auto; grid-template-rows:repeat(var(--stl-grows, 4), 120px); }
+.stl-gdlg menu { display:flex; justify-content:flex-end; gap:8px; padding:0; margin:12px 0 0; }
+.stl-gdlg input { min-width:260px; }
+/* `hidden` doit gagner sur les display:flex / grid ci-dessus (grille, barres, bibliothèque). */
+.stl-ctl [hidden] { display:none !important; }

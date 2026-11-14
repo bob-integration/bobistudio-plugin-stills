@@ -1,7 +1,13 @@
 {
-  "version": "0.19.12",
+  "version": "0.19.13",
   "date": "2026-11-14",
   "changes": {
+    "Grilles d'images, façon sampleur (0.19.13)": [
+      "Vue « Grille » à côté de la bibliothèque : des cases figées qui remplissent l'écran, sans défiler. Un clic (ou le pavé numérique, 1 à 9 et 0 pour les dix premières cases) met l'image de la case en preview, ou à l'antenne en Take direct, avec le cadrage de la case. Les cases à l'antenne et en preview sont marquées.",
+      "Une grille est une fiche de la base des médias, comme une playlist : rangée dans les bins et les projets, partageable, exportable et importable. Chaque utilisateur ouvre les siennes sur le panneau, en onglets ; elles le suivent d'un poste à l'autre.",
+      "Préparer : glisser des images de la bibliothèque dans les cases (au doigt : choisir l'image, puis toucher la case), échanger deux cases, régler le cadrage ou le nom d'une case, choisir le nombre de colonnes et de rangées. L'antenne n'est pas touchée.",
+      "Macro « Afficher une case d'une grille » (base des médias) : en preview ou à l'antenne, image rapatriée d'abord si elle n'est pas sur le nœud. Sans cœur assez récent, l'onglet Grille n'apparaît pas."
+    ],
     "Take et Cut échangent les images ; raccourcis clavier ; image par défaut (0.19.12)": [
       "TAKE et CUT échangent la preview et le programme, comme un mélangeur : l'image qui était à l'antenne passe en preview, un second TAKE y revient. Avant, la preview gardait l'image qui venait de partir.",
       "Raccourcis clavier : Espace = TAKE, Entrée = CUT, ← / → = image précédente / suivante, D = image par défaut.",

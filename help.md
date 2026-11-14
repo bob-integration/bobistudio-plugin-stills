@@ -21,6 +21,14 @@ Ces deux réglages sont propres à votre navigateur : ils ne changent rien pour 
 
 Dans la bibliothèque (base des médias : bins, recherche, serveurs réseau, fiche Infos) : **double-clic** ou **Choisir** met l'image en **preview**, puis **TAKE** l'envoie à l'antenne. Avec **Take direct** coché (réglage du plugin, décoché par défaut), choisir une image la met directement à l'antenne, sans preview. Glisser une image sur un bin l'y range.
 
+## Grilles (façon sampleur)
+
+**Grille**, à côté de **Bibliothèque**, remplace la liste par des cases figées qui remplissent l'écran, sans défiler. Un clic sur une case met son image en preview, avec le cadrage de la case ; TAKE l'envoie à l'antenne. En Take direct, elle part aussitôt. Les cases en preview et à l'antenne sont marquées.
+
+Une grille est une fiche de la base des médias, comme une playlist : elle se range dans les bins et les projets, se partage, s'exporte et s'importe. Chacun ouvre les siennes sur le panneau, en onglets (**Grilles ▾**) : pour une émission, préparez une grille par thème et passez de l'une à l'autre. Les onglets ouverts vous suivent d'un poste à l'autre.
+
+**Préparer** : glissez des images de la bibliothèque sur les cases (plusieurs à la fois remplissent les cases vides), glissez une case sur une autre pour les échanger. Au doigt : choisissez l'image dans la bibliothèque, puis touchez la case. Le menu d'une case règle son cadrage (celui des réglages Cadrage et Position), son nom, ou la vide. Colonnes et rangées se choisissent en haut. L'antenne n'est pas touchée pendant la préparation, et tout est enregistré au fil des gestes.
+
 ## Image par défaut
 
 **Définir** fait de l'image en preview, avec son cadrage, l'image par défaut. **Rappeler** (touche **D**) la met aussitôt à l'antenne, avec le fondu réglé ; l'image qui y était passe en preview. Elle est enregistrée avec le conteneur : un redéploiement la garde. Au démarrage, si aucune image n'est à l'antenne, c'est elle qui sort.
@@ -31,8 +39,9 @@ Dans la bibliothèque (base des médias : bins, recherche, serveurs réseau, fic
 |---|---|
 | Espace | TAKE |
 | Entrée | CUT |
-| ← / → | Image précédente / suivante, dans l'ordre de la bibliothèque affichée (elle passe en preview, ou à l'antenne en Take direct) |
+| ← / → | Image précédente / suivante, dans l'ordre de la bibliothèque affichée, ou case voisine en vue Grille (elle passe en preview, ou à l'antenne en Take direct) |
 | D | Rappeler l'image par défaut |
+| Pavé numérique 1 à 9, 0 | Vue Grille : cases 1 à 10 |
 
 Ils ne jouent pas pendant une saisie ni quand une fenêtre est ouverte.
 
@@ -63,7 +72,7 @@ Le réglage **Fondu (ms)** donne la durée du fondu enchaîné au changement d'i
 
 ## Macros
 
-Actions : preview d'une image, Take, Cut, afficher une image, image suivante / précédente, rappeler et définir l'image par défaut ; réglage Take direct. L'état lisible indique l'image en preview, l'image à l'antenne et l'image par défaut. Pour les macros, « suivante / précédente » suit l'ordre des noms dans le dossier de l'image en preview : une macro ne voit pas la bibliothèque affichée.
+Actions : preview d'une image, Take, Cut, afficher une image, image suivante / précédente, rappeler et définir l'image par défaut ; réglage Take direct. L'état lisible indique l'image en preview, l'image à l'antenne et l'image par défaut. Une case d'une grille s'affiche par l'action « Afficher une case d'une grille » de la base des médias. Pour les macros, « suivante / précédente » suit l'ordre des noms dans le dossier de l'image en preview : une macro ne voit pas la bibliothèque affichée.
 
 ## Cas d'usage typique
 

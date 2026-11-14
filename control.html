@@ -43,7 +43,42 @@
 
   <!-- Images : bibliothèque commune (static/js/media_library.js) — base des médias, limitée aux
        images, en vignettes ; « Afficher » envoie l'image. -->
-  <div class="stl-lib-host"></div>
+  <!-- Bibliothèque OU grille (2026-11-14) : la grille est une fiche de la base, ouverte par chaque
+       utilisateur ; en préparation, la bibliothèque reste visible pour y glisser les images. -->
+  <div class="stl-browse">
+    <div class="stl-browse-bar">
+      <div class="stl-view" role="tablist" data-i18n-aria="plugin.stills.view_aria" aria-label="Affichage">
+        <button type="button" role="tab" class="ctl-push stl-view-lib" aria-selected="true" data-i18n="plugin.stills.view_lib">Bibliothèque</button>
+        <button type="button" role="tab" class="ctl-push stl-view-grid" aria-selected="false" data-i18n="plugin.stills.view_grid">Grille</button>
+      </div>
+      <div class="stl-gtabs" role="tablist" data-i18n-aria="plugin.stills.gtabs_aria" aria-label="Grilles ouvertes" hidden></div>
+      <span class="stl-gtools" hidden>
+        <button type="button" class="ctl-push stl-gopen" data-i18n="plugin.stills.gopen">Grilles ▾</button>
+        <button type="button" class="ctl-push stl-gprep" aria-pressed="false" data-i18n="plugin.stills.gprep" data-i18n-title="plugin.stills.gprep_tip" title="Glisser des images de la bibliothèque dans les cases, les échanger, régler le cadrage d'une case">Préparer</button>
+        <span class="stl-gsize" hidden>
+          <label><span data-i18n="plugin.stills.gcols">Colonnes</span> <select class="stl-gcols"></select></label>
+          <label><span data-i18n="plugin.stills.grows">Rangées</span> <select class="stl-grows"></select></label>
+        </span>
+        <button type="button" class="ctl-push stl-gmore" data-i18n-aria="plugin.stills.gmore" aria-label="Autres gestes sur la grille">⋯</button>
+      </span>
+    </div>
+    <div class="stl-grid-wrap" hidden>
+      <p class="stl-gempty" data-i18n="plugin.stills.gempty">Aucune grille ouverte : « Grilles ▾ » pour en ouvrir une ou en créer une.</p>
+      <p class="stl-ghint" hidden data-i18n="plugin.stills.ghint">Préparation : glissez des images de la bibliothèque sur les cases (plusieurs à la fois : elles remplissent les cases vides), glissez une case sur une autre pour les échanger, touchez une case pour son menu. L'antenne n'est pas touchée.</p>
+      <div class="stl-grid"></div>
+    </div>
+    <div class="stl-lib-host"></div>
+    <input type="file" class="stl-gimport" accept=".json,application/json" hidden>
+    <dialog class="stl-gdlg">
+      <form method="dialog" class="stl-gdlg-form">
+        <label><span class="stl-gdlg-title"></span> <input class="stl-gdlg-name" maxlength="120" required autocomplete="off"></label>
+        <menu>
+          <button type="button" class="ctl-push stl-gdlg-cancel" data-i18n="plugin.stills.cancel">Annuler</button>
+          <button type="submit" class="ctl-push" value="ok" data-i18n="plugin.stills.ok">OK</button>
+        </menu>
+      </form>
+    </dialog>
+  </div>
 
   <div class="stl-side2">
 
