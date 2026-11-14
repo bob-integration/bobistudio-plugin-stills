@@ -14,8 +14,8 @@
       <div class="stl-screen"><img class="stl-pv-img" alt="" hidden><span class="stl-empty stl-pv-empty" data-i18n="plugin.stills.pv_empty">Aucune image en preview</span></div>
     </figure>
     <div class="stl-take-col">
-      <button type="button" class="stl-take" data-i18n="plugin.stills.take">TAKE</button>
-      <button type="button" class="stl-cut" data-i18n="plugin.stills.cut">CUT</button>
+      <button type="button" class="stl-take" data-i18n="plugin.stills.take" data-i18n-title="plugin.stills.take_tip" title="Preview vers l'antenne, avec le fondu réglé (touche Espace)">TAKE</button>
+      <button type="button" class="stl-cut" data-i18n="plugin.stills.cut" data-i18n-title="plugin.stills.cut_tip" title="Preview vers l'antenne, coupe franche (touche Entrée)">CUT</button>
     </div>
     <figure class="stl-pane stl-pane-pg">
       <figcaption><span class="stl-tag stl-tag-pg" data-i18n="plugin.stills.program">PROGRAMME</span> <span class="stl-pg-info stl-info"></span></figcaption>
@@ -29,6 +29,11 @@
     <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
     <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
     <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
+    <span class="stl-default">
+      <span data-i18n="plugin.stills.default_lbl">Image par défaut :</span> <strong class="stl-default-name">—</strong>
+      <button type="button" class="ctl-push stl-default-set" data-i18n="plugin.stills.default_set" data-i18n-title="plugin.stills.default_set_tip" title="L'image en preview, avec son cadrage, devient l'image par défaut">Définir</button>
+      <button type="button" class="ctl-push stl-default-recall" data-i18n="plugin.stills.default_recall" data-i18n-title="plugin.stills.default_recall_tip" title="Met l'image par défaut à l'antenne ; l'image qui y était passe en preview (touche D)">Rappeler</button>
+    </span>
     <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
   </div>
   </div>

@@ -1,7 +1,12 @@
 {
-  "version": "0.19.11",
-  "date": "2026-11-09",
+  "version": "0.19.12",
+  "date": "2026-11-14",
   "changes": {
+    "Take et Cut échangent les images ; raccourcis clavier ; image par défaut (0.19.12)": [
+      "TAKE et CUT échangent la preview et le programme, comme un mélangeur : l'image qui était à l'antenne passe en preview, un second TAKE y revient. Avant, la preview gardait l'image qui venait de partir.",
+      "Raccourcis clavier : Espace = TAKE, Entrée = CUT, ← / → = image précédente / suivante, D = image par défaut.",
+      "Image par défaut : définie depuis la preview, rappelée à l'antenne en un geste, enregistrée avec le conteneur, et affichée au démarrage quand rien d'autre n'est configuré. Actions de macro : suivante / précédente, rappeler, définir ; état « image par défaut »."
+    ],
     "Version minimale du cœur déclarée (0.19.11)": [
       "Le manifeste déclare `requires.core_min` = 0.9.9 : l'orchestrateur refuse de l'installer sur un cœur plus ancien et le dit. Valeur = le cœur avec lequel la version précédente a été faite. Rien ne change dans le conteneur : rien à redéployer."
     ],

@@ -66,5 +66,14 @@
   "plugin.stills.resize_tip": "Glisser pour redimensionner les écrans PREVIEW / PROGRAMME (double-clic : taille par défaut)",
   "plugin.stills.pgm_right": "PGM seul, à droite",
   "plugin.stills.pgm_right_tip": "Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne.",
-  "plugin.stills.side_resize_tip": "Glisser pour élargir ou réduire la colonne PROGRAMME (double-clic : largeur par défaut)"
+  "plugin.stills.side_resize_tip": "Glisser pour élargir ou réduire la colonne PROGRAMME (double-clic : largeur par défaut)",
+  "plugin.stills.take_tip": "Preview vers l'antenne, avec le fondu réglé (touche Espace)",
+  "plugin.stills.cut_tip": "Preview vers l'antenne, coupe franche (touche Entrée)",
+  "plugin.stills.default_lbl": "Image par défaut :",
+  "plugin.stills.default_set": "Définir",
+  "plugin.stills.default_set_tip": "L'image en preview, avec son cadrage, devient l'image par défaut",
+  "plugin.stills.default_recall": "Rappeler",
+  "plugin.stills.default_recall_tip": "Met l'image par défaut à l'antenne ; l'image qui y était passe en preview (touche D)",
+  "plugin.stills.default_done": "Image par défaut : ",
+  "plugin.stills.step_edge": "Plus d'image dans ce sens"
 }

@@ -224,6 +224,18 @@ except AttributeError:
     RESAMPLE = Image.LANCZOS
 
 # ─── état + buffers courants ─────────────────────────────────────────────────
+def _norm_frame(d):
+    """An image and its framing, cleaned: {{file, fit, x, y, size}} (empty file = no image)."""
+    d = d if isinstance(d, dict) else {{}}
+    try:
+        return {{"file": str(d.get("file") or "").strip(),
+                 "fit": d.get("fit") if d.get("fit") in ("native", "fit", "stretch") else "native",
+                 "x": float(d.get("x") or 0), "y": float(d.get("y") or 0),
+                 "size": float(d.get("size") or 100)}}
+    except (TypeError, ValueError):
+        return {{"file": "", "fit": "native", "x": 0.0, "y": 0.0, "size": 100.0}}
+
+
 state_lock = threading.Lock()
 state = {{
     "folder": CONFIG.get("folder") or "",
@@ -239,6 +251,9 @@ state = {{
     # l'antenne. `take_direct` = ancien comportement (choisir = antenne). Défaut : mode Take.
     "take_direct": _as_bool_cfg(CONFIG.get("take_direct"), default=False),
     "preview": {{"file": "", "fit": "native", "x": 0.0, "y": 0.0, "size": 100.0}},
+    # Default image, recalled in one gesture (key, macro). Persisted by the orchestrator
+    # (`control.persist`, param `default_image`): set here, it survives a redeploy.
+    "default": _norm_frame(CONFIG.get("default_image")),
 }}
 
 _BLACK_B = (16 << (BIT_DEPTH - 8)).to_bytes(_BPS, "little")   # Y noir studio (16/64/256)
@@ -832,12 +847,17 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "fading": frames["fade"] is not None,   # fondu en cours (condition de macro)
                        "program_file": s.get("file", ""),      # image À L'ANTENNE
                        "preview_file": (s.get("preview") or {{}}).get("file", ""),   # image en PREVIEW
+                       "default_file": (s.get("default") or {{}}).get("file", ""),   # image par défaut
                        "on_air_since": prog["since"], "program_gen": prog["gen"],
                        "program_meta": prog["meta"], "preview_meta": prev["meta"],
                        "preview_error": prev["error"], "preview_gen": prev["gen"],
                        "jpeg_encodes": _jpeg_stats["encodes"],   # preuve : pas d'encodage en continu
                        "mxl_lib": _mxl_lib_state()}})
             self._json(200, s)
+        elif u.path == "/default":
+            # Persistence snapshot (`control.persist`): exactly what goes into params.default_image.
+            with state_lock: d = dict(state["default"])
+            self._json(200, d)
         elif u.path == "/folders":
             self._json(200, {{"folders": _list_folders(), "media_root": MEDIA_ROOT}})
         elif u.path == "/images":
@@ -880,30 +900,7 @@ class ControlHandler(BaseHTTPRequestHandler):
             self._json(500, {{"error": str(e)}})
 
     def _go_air(self, b, force_fade=False):
-        """Met l'image à l'ANTENNE (corps de /select, /take, /cut). Même chemin pour les trois :
-        la sortie ne connaît qu'`_render`. Un changement de cadrage de la MÊME image reste une
-        coupe (le fondu ne vaut que pour un changement d'image), sauf `force_fade` (Take/Cut,
-        où la durée est explicite)."""
-        with state_lock:
-            prev_file = state["file"]
-            if "folder" in b: state["folder"] = (b.get("folder") or "").strip()
-            state["file"] = (b.get("file") or state["file"] or "").strip()
-            state["fit"]  = b.get("fit") or state["fit"]
-            state["x"]    = float(b.get("x", state["x"]) or 0)
-            state["y"]    = float(b.get("y", state["y"]) or 0)
-            state["size"] = float(b.get("size", state["size"]) or 100)
-            s = dict(state)
-        fade = b.get("fade_ms")
-        try:
-            fade = None if fade is None or fade == "" else max(0.0, min(10000.0, float(fade)))
-        except (TypeError, ValueError):
-            return self._json(400, {{"error": "fade_ms : nombre de millisecondes attendu"}})
-        if fade is None and s["file"] == prev_file and not force_fade:
-            fade = 0.0
-        ok, detail = _render(s["file"], s["fit"], s["x"], s["y"], s["size"], fade_ms=fade)
-        with metrics_lock:
-            metrics["file"] = s["file"] if ok else metrics["file"]
-        self._json(200 if ok else 400, {{"ok": ok, "detail": detail, "file": s["file"]}})
+        self._json(*_air(b, force_fade))
 
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
@@ -931,7 +928,18 @@ class ControlHandler(BaseHTTPRequestHandler):
                 return self._json(400, {{"ok": False, "detail": "rien en preview"}})
             body = dict(pv)
             body["fade_ms"] = 0 if u.path == "/cut" else b.get("fade_ms")
-            self._go_air(body, force_fade=True)
+            self._json(*_air_swapping(body))
+        elif u.path == "/default/recall":
+            b = self._read()
+            with state_lock: d = dict(state["default"])
+            if not d["file"]:
+                return self._json(400, {{"ok": False, "detail": "aucune image par défaut"}})
+            d["fade_ms"] = b.get("fade_ms")
+            self._json(*_air_swapping(d))
+        elif u.path == "/default/set":
+            self._json(*_default_set(self._read()))
+        elif u.path == "/step":
+            self._json(*_step(self._read()))
         elif u.path == "/take_direct":
             b = self._read()
             v = b.get("enabled", b.get("take_direct"))
@@ -959,6 +967,109 @@ class ControlHandler(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
 
 
+def _air(b, force_fade=False):
+    """Met l'image à l'ANTENNE (corps de /select, /take, /cut, rappel de l'image par défaut).
+    Même chemin pour tous : la sortie ne connaît qu'`_render`. Un changement de cadrage de la
+    MÊME image reste une coupe (le fondu ne vaut que pour un changement d'image), sauf
+    `force_fade` (Take/Cut, où la durée est explicite). Rend (code HTTP, réponse)."""
+    with state_lock:
+        prev_file = state["file"]
+        if "folder" in b: state["folder"] = (b.get("folder") or "").strip()
+        state["file"] = (b.get("file") or state["file"] or "").strip()
+        state["fit"]  = b.get("fit") or state["fit"]
+        state["x"]    = float(b.get("x", state["x"]) or 0)
+        state["y"]    = float(b.get("y", state["y"]) or 0)
+        state["size"] = float(b.get("size", state["size"]) or 100)
+        s = dict(state)
+    fade = b.get("fade_ms")
+    try:
+        fade = None if fade is None or fade == "" else max(0.0, min(10000.0, float(fade)))
+    except (TypeError, ValueError):
+        return 400, {{"error": "fade_ms : nombre de millisecondes attendu"}}
+    if fade is None and s["file"] == prev_file and not force_fade:
+        fade = 0.0
+    ok, detail = _render(s["file"], s["fit"], s["x"], s["y"], s["size"], fade_ms=fade)
+    with metrics_lock:
+        metrics["file"] = s["file"] if ok else metrics["file"]
+    return (200 if ok else 400), {{"ok": ok, "detail": detail, "file": s["file"]}}
+
+
+def _clear_preview():
+    with state_lock:
+        state["preview"] = _norm_frame(None)
+    with prev_lock:
+        prev["gen"] += 1
+        prev["rgba"] = None; prev["meta"] = None; prev["error"] = ""
+
+
+def _air_swapping(body):
+    """Take, Cut, rappel de l'image par défaut : comme sur un mélangeur, les deux images
+    S'ÉCHANGENT — ce qui était à l'antenne passe en preview, un second Take y revient. Rien à
+    l'antenne avant (noir) → preview vide."""
+    with state_lock:
+        old = _norm_frame(state)
+    with prog_lock:
+        on_air = prog["meta"] is not None
+    code, out = _air(body, force_fade=True)
+    if code == 200:
+        if on_air and old["file"]:
+            _do_preview(old["file"], old["fit"], old["x"], old["y"], old["size"])
+        else:
+            _clear_preview()
+        out["preview_file"] = old["file"] if on_air else ""
+    return code, out
+
+
+def _default_set(b):
+    """/default/set : {{"from": "preview"|"program"}} reprend l'image et son cadrage, ou
+    {{file, fit, x, y, size}} explicite ; {{"file": ""}} retire l'image par défaut."""
+    src = b.get("from")
+    with state_lock:
+        if src == "preview":
+            d = _norm_frame(state["preview"])
+        elif src == "program":
+            d = _norm_frame(state)
+        else:
+            d = _norm_frame(b)
+    if d["file"]:
+        full = _safe_join(d["file"])
+        if not full or not os.path.isfile(full):
+            return 400, {{"ok": False, "detail": "fichier introuvable"}}
+    elif src:
+        return 400, {{"ok": False, "detail": "aucune image en %s" % src}}
+    with state_lock:
+        state["default"] = d
+    return 200, {{"ok": True, "default": d}}
+
+
+def _step(b):
+    """/step {{delta: +1|-1}} : image suivante / précédente du DOSSIER de l'image en preview (à
+    défaut, de celle à l'antenne), par ordre de nom. Elle passe en preview — à l'antenne en
+    Take direct — avec le cadrage courant. Ne boucle pas : au bout, rien ne bouge (`edge`)."""
+    try:
+        delta = int(b.get("delta", 1))
+    except (TypeError, ValueError):
+        return 400, {{"error": "delta : entier attendu"}}
+    with state_lock:
+        pv, pg, direct = dict(state["preview"]), _norm_frame(state), state["take_direct"]
+    ref = pv if pv["file"] else pg
+    imgs = _list_images(os.path.dirname(ref["file"]))
+    if not imgs:
+        return 400, {{"ok": False, "detail": "aucune image dans le dossier"}}
+    if ref["file"] in imgs:
+        i = imgs.index(ref["file"]) + (1 if delta > 0 else -1 if delta < 0 else 0)
+    else:
+        i = 0 if delta >= 0 else len(imgs) - 1
+    if not 0 <= i < len(imgs):
+        return 200, {{"ok": True, "edge": True, "file": ref["file"]}}
+    fr = dict(ref, file=imgs[i])
+    if direct:
+        return _air(fr)
+    ok, detail = _do_preview(fr["file"], fr["fit"], fr["x"], fr["y"], fr["size"])
+    return (200 if ok else 400), {{"ok": ok, "detail": detail, "file": fr["file"]}}
+
+
+
 try:
     os.makedirs(MEDIA_ROOT, exist_ok=True)
 except Exception:
@@ -983,7 +1094,9 @@ def _supervised(fn):
 
 _supervised(feeder)
 
-# Rendu initial si une image est déjà configurée au déploiement.
+# Rendu initial si une image est déjà configurée au déploiement ; sinon l'image par défaut.
+if not (state["file"] or "").strip() and state["default"]["file"]:
+    state.update({{k: state["default"][k] for k in ("file", "fit", "x", "y", "size")}})
 if (state["file"] or "").strip():
     try:
         _render(state["file"], state["fit"], state["x"], state["y"], state["size"])

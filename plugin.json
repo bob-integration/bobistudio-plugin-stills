@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.11",
+  "version": "0.19.12",
   "requires": {"core_min": "0.9.9"},
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
@@ -38,7 +38,8 @@
     "genlock": true,
     "log_level": "info",
     "transition_ms": 0,
-    "take_direct": false
+    "take_direct": false,
+    "default_image": {}
   },
   "media_volume": true,
   "wiring": {
@@ -70,14 +71,26 @@
       "/preview",
       "/take",
       "/cut",
-      "/take_direct"
+      "/take_direct",
+      "/default",
+      "/default/set",
+      "/default/recall",
+      "/step"
     ],
     "read_endpoints": [
       "/state",
       "/program.jpg",
       "/preview.jpg",
-      "/thumb"
-    ]
+      "/thumb",
+      "/default"
+    ],
+    "persist": {
+      "param": "default_image",
+      "snapshot": "/default",
+      "settings": [
+        "/default/set"
+      ]
+    }
   },
   "actions": [
     {
@@ -203,6 +216,66 @@
           "default": false
         }
       ]
+    },
+    {
+      "id": "step",
+      "label": "Image suivante / précédente (en preview)",
+      "endpoint": "/step",
+      "params": [
+        {
+          "key": "delta",
+          "label": "Sens",
+          "type": "number",
+          "default": 1,
+          "options": [
+            {
+              "value": 1,
+              "label": "Suivante"
+            },
+            {
+              "value": -1,
+              "label": "Précédente"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "default_recall",
+      "label": "Rappeler l'image par défaut (à l'antenne)",
+      "endpoint": "/default/recall",
+      "params": [
+        {
+          "key": "fade_ms",
+          "label": "Fondu (ms, vide = durée par défaut, 0 = coupe)",
+          "type": "number",
+          "min": 0,
+          "max": 10000
+        }
+      ]
+    },
+    {
+      "id": "default_set",
+      "label": "Définir l'image par défaut",
+      "endpoint": "/default/set",
+      "params": [
+        {
+          "key": "from",
+          "label": "Reprendre",
+          "type": "text",
+          "default": "preview",
+          "options": [
+            {
+              "value": "preview",
+              "label": "L'image en preview"
+            },
+            {
+              "value": "program",
+              "label": "L'image à l'antenne"
+            }
+          ]
+        }
+      ]
     }
   ],
   "state": [
@@ -247,6 +320,13 @@
       "endpoint": "/state",
       "path": "take_direct",
       "type": "bool"
+    },
+    {
+      "id": "default_file",
+      "label": "Image par défaut",
+      "endpoint": "/state",
+      "path": "default_file",
+      "type": "text"
     }
   ],
   "param_tree": {

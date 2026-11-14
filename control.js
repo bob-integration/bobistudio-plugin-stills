@@ -118,6 +118,14 @@ window.MXLPlugins["stills"] = {
       e.preventDefault(); saveSide(setSide($('.stl-side').getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1)));
     });
 
+    // Erreur du conteneur. « fichier introuvable » pour une image que la base dit présente : on demande
+    // à l'orchestrateur si le conteneur voit son volume média (démarré avant le montage d'un disque ?).
+    async function errToast(r){
+      const d = r.detail || r.error || '?';
+      const why = d === 'fichier introuvable' && window.MediaLibrary && window.MediaLibrary.explainMissing
+        ? await window.MediaLibrary.explainMissing(vmid) : null;
+      toast(why || (T('plugin.stills.err_prefix','Erreur : ') + d), 'error');
+    }
     const direct = () => !!($('.stl-direct') && $('.stl-direct').checked);
     const params = () => ({
       file: selected, folder: selected.includes('/') ? selected.slice(0, selected.lastIndexOf('/')) : '',
@@ -132,7 +140,7 @@ window.MXLPlugins["stills"] = {
       try{
         const r = await (await api('/select', params())).json();
         if(r.ok) toast(T('plugin.stills.shown','Image affichée : ') + selected.split('/').pop(), 'info');
-        else     toast(T('plugin.stills.err_prefix','Erreur : ') + (r.detail || r.error || '?'), 'error');
+        else     errToast(r);
         setTimeout(refresh, 300);
       }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
     }
@@ -140,7 +148,7 @@ window.MXLPlugins["stills"] = {
       if(!selected) return;
       try{
         const r = await (await api('/preview', params())).json();
-        if(!r.ok) toast(T('plugin.stills.err_prefix','Erreur : ') + (r.detail || r.error || '?'), 'error');
+        if(!r.ok) errToast(r);
       }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
       refresh();
     }
@@ -148,8 +156,12 @@ window.MXLPlugins["stills"] = {
     async function takeOrCut(path){
       try{
         const r = await (await api(path, {})).json();
-        if(r.ok) toast(T('plugin.stills.on_air','À l\'antenne : ') + (r.file||'').split('/').pop(), 'info');
-        else     toast(T('plugin.stills.err_prefix','Erreur : ') + (r.detail || r.error || '?'), 'error');
+        if(r.ok){
+          // Les deux images s'échangent : la preview montre désormais l'ancienne image d'antenne.
+          if('preview_file' in r){ selected = r.preview_file || ''; adoptPv = true; ml.markCurrent ? ml.markCurrent() : ml.render(); }
+          toast(T('plugin.stills.on_air','À l\'antenne : ') + (r.file||'').split('/').pop(), 'info');
+        }
+        else     errToast(r);
       }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
       setTimeout(refresh, 150);
     }
@@ -178,10 +190,21 @@ window.MXLPlugins["stills"] = {
       else { im.hidden = true; em.hidden = false; delete im.dataset.u; }
     }
 
+    let adoptPv = false, lastPv = null;   // preview changée ailleurs (Take, macro) : la reprendre
     async function refresh(){
       try{
         const s = await (await api('/state')).json();
         const pvf = s.preview_file || '';
+        if(lastPv !== null && pvf !== lastPv && pvf !== selected){ selected = pvf; adoptPv = true; ml.markCurrent ? ml.markCurrent() : ml.render(); }
+        lastPv = pvf;
+        if(adoptPv){
+          adoptPv = false; const p = s.preview || {};
+          if(pvf){ setFit(p.fit || 'native'); $('.stl-x').value = p.x ?? 0; $('.stl-y').value = p.y ?? 0; $('.stl-size').value = p.size ?? 100; }
+        }
+        const df = s.default_file || '';
+        $('.stl-default-name').textContent = df ? df.split('/').pop() : '—';
+        $('.stl-default-recall').disabled = !df;
+        $('.stl-default-set').disabled = !pvf;
         if(!selected){
           selected = pvf || s.file || '';
           const p = s.preview || {};
@@ -215,6 +238,34 @@ window.MXLPlugins["stills"] = {
 
     $('.stl-take').onclick = () => takeOrCut('/take');
     $('.stl-cut').onclick  = () => takeOrCut('/cut');
+    $('.stl-default-recall').onclick = () => takeOrCut('/default/recall');
+    $('.stl-default-set').onclick = async () => {
+      try{
+        const r = await (await api('/default/set', {from:'preview'})).json();
+        if(r.ok) toast(T('plugin.stills.default_done','Image par défaut : ') + (r.default.file||'').split('/').pop(), 'info');
+        else     errToast(r);
+      }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
+      refresh();
+    };
+
+    // Raccourcis clavier : Espace = TAKE, Entrée = CUT, ← → = image précédente / suivante (ordre de la
+    // bibliothèque affichée), D = rappel de l'image par défaut. Actifs tant que ce panneau est affiché,
+    // jamais pendant une saisie, dans une fenêtre ouverte, ni avec Ctrl / Alt / Cmd.
+    const onKey = e => {
+      if(e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || !el.isConnected || !el.offsetParent) return;
+      const t = e.target;
+      if(t && t.closest && (t.closest('input,textarea,select,[contenteditable="true"],dialog') || (t !== document.body && !el.contains(t) && t.closest('[role="dialog"],.modal')))) return;
+      if(document.querySelector('dialog[open]')) return;
+      const k = e.key, go = f => { e.preventDefault(); f(); };
+      if(k === ' ') go(() => { if(!$('.stl-take').disabled) takeOrCut('/take'); });
+      else if(k === 'Enter') go(() => { if(!$('.stl-cut').disabled) takeOrCut('/cut'); });
+      else if(k === 'ArrowRight' || k === 'ArrowLeft') go(() => {
+        if(!ml.step(k === 'ArrowRight' ? 1 : -1, 'show')) toast(T('plugin.stills.step_edge','Plus d\'image dans ce sens'), 'info'); });
+      else if(k === 'd' || k === 'D') go(() => { if(!$('.stl-default-recall').disabled) takeOrCut('/default/recall'); });
+    };
+    if(this._onKey) document.removeEventListener('keydown', this._onKey);
+    this._onKey = onKey;
+    document.addEventListener('keydown', onKey);
     $('.stl-direct').onchange = async () => {
       await api('/take_direct', {enabled: direct()}); syncMode();
       if(direct() && selected) apply();   // bascule en direct : ce qui est choisi part aussitôt

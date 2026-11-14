@@ -66,5 +66,14 @@
   "plugin.stills.resize_tip": "Drag to resize the PREVIEW / PROGRAM screens (double-click: default size)",
   "plugin.stills.pgm_right": "PGM only, on the right",
   "plugin.stills.pgm_right_tip": "Only the PROGRAM screen, on the right: the library takes the full height on the left. The preview stays active (its name is shown) and TAKE sends it on air.",
-  "plugin.stills.side_resize_tip": "Drag to widen or narrow the PROGRAM column (double-click: default width)"
+  "plugin.stills.side_resize_tip": "Drag to widen or narrow the PROGRAM column (double-click: default width)",
+  "plugin.stills.take_tip": "Preview to air, with the set fade (Space key)",
+  "plugin.stills.cut_tip": "Preview to air, hard cut (Enter key)",
+  "plugin.stills.default_lbl": "Default image:",
+  "plugin.stills.default_set": "Set",
+  "plugin.stills.default_set_tip": "The image in preview, with its framing, becomes the default image",
+  "plugin.stills.default_recall": "Recall",
+  "plugin.stills.default_recall_tip": "Puts the default image on air; the image that was there goes to preview (D key)",
+  "plugin.stills.default_done": "Default image: ",
+  "plugin.stills.step_edge": "No more images this way"
 }
