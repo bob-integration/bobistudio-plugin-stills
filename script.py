@@ -362,6 +362,40 @@ except Exception as _e:
     print("stills: kernel unavailable (%s) — numpy conversion" % (_e,), flush=True)
     _SK = None
 
+# Dithered dissolve (libbobi_stills ABI 2, compute image >= 0.83, 2026-11-15). Between two similar
+# images a pixel moves a few code values over the whole fade: in 8 bits it steps 0, 1 or 2 codes per
+# frame, and pixels with similar differences step on the SAME frame — a jerky fade, measured on a
+# tester's recording. A fixed per-pixel threshold in [0, 1) spreads those steps. Older library:
+# _DITHER stays None and the fade mixes as before (mvk, truncated).
+_DITHER = None
+if _SK is not None and hasattr(_SK, "bobi_stills_mixd_u8"):
+    try:
+        _pd, _dbl = _ct.c_ssize_t, _ct.c_double
+        for _fn in (_SK.bobi_stills_mixd_u8, _SK.bobi_stills_mixd_u16):
+            _fn.restype = None
+            _fn.argtypes = [_vp, _pd, _vp, _pd, _vp, _pd, _i, _i, _dbl, _dbl, _vp, _i]
+        # Every threshold of the 4096 occurs once per tile: an unbiased spread, no pattern drift.
+        _DITHER = ((np.random.default_rng(0x5715).permutation(4096).astype(np.float32) + 0.5)
+                   / np.float32(4096)).reshape(64, 64)
+    except Exception as _e:
+        print("stills: dithered mix unavailable (%s)" % (_e,), flush=True)
+        _DITHER = None
+metrics["fade_dither"] = _DITHER is not None
+
+
+def _mixd_into(o, a, b, fa, fb):
+    """o ← clamp(trunc(a·fa + b·fb + threshold)) by the C kernel. False when not applicable."""
+    if _DITHER is None or o.dtype != _NP_DT or not (o.shape == a.shape == b.shape) or o.ndim != 2:
+        return False
+    for t in (o, a, b):
+        if t.strides[1] != t.itemsize or t.strides[0] % t.itemsize:
+            return False
+    fn = _SK.bobi_stills_mixd_u16 if o.dtype == np.uint16 else _SK.bobi_stills_mixd_u8
+    fn(o.ctypes.data, o.strides[0] // o.itemsize, a.ctypes.data, a.strides[0] // a.itemsize,
+       b.ctypes.data, b.strides[0] // b.itemsize, o.shape[0], o.shape[1], float(fa), float(fb),
+       _DITHER.ctypes.data, int(_MAXV))
+    return True
+
 
 def _canvas_to_yuv(canvas):
     """Canvas RGBA uint8 (HEIGHT, WIDTH, 4) → (Fill, Key) en octets planar, prêts pour le bus."""
@@ -513,11 +547,15 @@ def _mix_ends(pairs, w, m, r0, r1):
             a, b, o = A[k][lo:hi], B[k][lo:hi], O[k][lo:hi]
             if m is None and add and k == 0:
                 ca, cb = min(1.0, 2.0 * (1.0 - w)), min(1.0, 2.0 * w)
+                if _mixd_into(o, a, b, ca, cb):
+                    continue
                 if _MVK and bobimxl.mvk_mixf_into(o, a, b, ca, cb, clip=True, maxv=_MAXV):
                     continue
                 o[...] = np.clip(a.astype(np.float32) * ca + b.astype(np.float32) * cb, 0, _MAXV).astype(_NP_DT)
                 continue
             if m is None:
+                if _mixd_into(o, a, b, 1.0 - w, w):
+                    continue
                 if _MVK and bobimxl.mvk_mixf_into(o, a, b, 1.0 - w, w):
                     continue
                 mm = np.float32(w)
@@ -943,7 +981,7 @@ def _set_image(fill_bytes, key_bytes, fade_ms, rgba=None, meta=None):
         if wipe is not None and not _field_ready(wipe):
             log("stills: wipe field not ready — this transition is a dissolve", "warning")
             wipe = None
-        if _MVK or wipe is not None or additive:
+        if _MVK or _DITHER is not None or wipe is not None or additive:
             # (ancienne, nouvelle, tampon de sortie de _on_air) en plans : rien à préparer.
             ends = lambda old, new: (_planes(old), _planes(new), np.empty(V_FRAME_SIZE // _BPS, _NP_DT))
             fade = {{"ends": True, "wipe": wipe, "additive": additive, "n": n, "i": 0, "f": ends(cur_f, fill_bytes),
@@ -1459,6 +1497,7 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "width": WIDTH, "height": HEIGHT, "scan": SCAN,
                        "log_level": LOG_LEVEL,   # lisible en condition de macro
                        "fading": frames["fade"] is not None,   # fondu en cours (condition de macro)
+                       "fade_dither": _DITHER is not None,     # dithered dissolve (kernel ABI 2)
                        "program_file": s.get("file", ""),      # image À L'ANTENNE
                        "preview_file": (s.get("preview") or {{}}).get("file", ""),   # image en PREVIEW
                        "default_file": (s.get("default") or {{}}).get("file", ""),   # image par défaut

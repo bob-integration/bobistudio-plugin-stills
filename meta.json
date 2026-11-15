@@ -1,7 +1,12 @@
 {
-  "version": "0.19.20",
+  "version": "0.19.21",
   "date": "2026-11-15",
   "changes": {
+    "Fondu tramé : plus d'à-coups entre deux images proches (0.19.21)": [
+      "Entre deux images proches, un pixel ne change que de quelques niveaux sur tout le fondu. En 8 bits, il avance de 0, 1 ou 2 niveaux par image, et les pixels qui ont le même écart changent tous sur la même image : le fondu avance par à-coups. Mesuré le 2026-11-15 sur l'enregistrement d'un testeur, puis reproduit en simulation avec ses images : même signature en 8 bits, presque régulier en 10 bits.",
+      "Le fondu (et l'additif) ajoutent maintenant, avant l'arrondi, un seuil fixe propre à chaque pixel (motif de 64×64). Les changements de niveau se répartissent dans le temps. Les deux extrémités du fondu restent exactes, et l'image fixe n'est pas touchée.",
+      "Il faut l'image d'exécution 0.83 (noyau libbobi_stills ABI 2). Avec une image plus ancienne, le fondu reste celui d'avant. `/state.fade_dither` indique si le tramage est actif."
+    ],
     "Conversion d'image en C (0.19.20)": [
       "Préparer une image (RGB → YUV BT.709 plage studio, chrominance moyennée, Key) passe par un noyau C (libbobi_stills, compilé dans l'image d'exécution) : une passe, plusieurs cœurs, hors du verrou de Python. Mesuré en 1080p : 12 à 15 ms au lieu de 105 à 150 ms ; résultat identique octet pour octet en 4:2:2 (à une unité près sur quelques échantillons en 4:2:0).",
       "Il faut l'image d'exécution qui contient ce noyau. Avec une image plus ancienne, le plugin garde son calcul numpy : rien ne change."
