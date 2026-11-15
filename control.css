@@ -100,14 +100,16 @@
 .stl-browse.is-prep .stl-grid { height:auto; grid-template-rows:repeat(var(--stl-grows, 4), 120px); }
 /* Sorties AUX : petites vues dans le coin, cibles de dépôt. */
 /* Colonne de droite de la grille des écrans quand il y en a (sinon, rien ne change). */
-.stl-pp:has(> .stl-aux:not([hidden])) { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) 150px;
-    max-width:calc(45vh * 32 / 9 + 260px); }
-.stl-aux { display:flex; flex-direction:column; justify-content:flex-end; gap:6px; align-self:end; min-width:0; }
+/* Number of AUX columns (--stl-aux-cols, set by control.js): the fewest that keep the stack within
+   the height of the screens. Tall screens: one column; screens shrunk by the grip: side by side. */
+.stl-pp:has(> .stl-aux:not([hidden])) { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;
+    max-width:calc(45vh * 32 / 9 + 110px + var(--stl-aux-w, 150px)); }
+.stl-aux { display:grid; grid-template-columns:repeat(var(--stl-aux-cols, 1), 150px); align-content:end; gap:6px; align-self:end; min-width:0; }
 /* PGM seul à droite, ou écran étroit : une seule colonne, les AUX en rangée sous les écrans. */
 .stl-ctl.is-pgm-right .stl-pp:has(> .stl-aux:not([hidden])) { grid-template-columns:minmax(0,1fr); max-width:none; }
-.stl-ctl.is-pgm-right .stl-pp > .stl-aux { order:4; flex-direction:row; flex-wrap:wrap; }
+.stl-ctl.is-pgm-right .stl-pp > .stl-aux { order:4; display:flex; flex-direction:row; flex-wrap:wrap; }
 @media (max-width: 720px) { .stl-pp:has(> .stl-aux:not([hidden])) { grid-template-columns:1fr; }
-    .stl-aux { flex-direction:row; flex-wrap:wrap; } }
+    .stl-aux { display:flex; flex-direction:row; flex-wrap:wrap; } }
 .stl-aux-out { margin:0; width:150px; border:1px solid var(--border-soft); border-radius:6px; overflow:hidden; background:var(--bg-panel); }
 .stl-aux-out.is-drop { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
 .stl-aux-out .stl-aux-scr { aspect-ratio:16/9; background:#000; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:0.75em; }

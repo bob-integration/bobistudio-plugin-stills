@@ -67,6 +67,25 @@ window.MXLPlugins["stills"] = {
       pp.style.maxWidth = w + 'px'; ctlEl.classList.toggle('is-compact', w < 520);
       return w;
     };
+    // AUX beside the PGM: the fewest columns that keep the stack within the height of the screens
+    // (one column under tall screens, side by side once the grip shrinks them). Each candidate is
+    // applied and measured: widening the column may shrink the screens, so the result is exact.
+    const AUX_W = 150, AUX_GAP = 6, pgScr = $('.stl-pane-pg .stl-screen');
+    function auxLayout(){
+      const box = pp.querySelector('.stl-aux'), n = box && !box.hidden ? box.children.length : 0;
+      const side = n && getComputedStyle(box).display === 'grid';   // row modes (PGM right, narrow) use flex
+      let k = 1;
+      for(; side && k < n; k++){
+        pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-w', (k * AUX_W + (k - 1) * AUX_GAP) + 'px');
+        const rows = Math.ceil(n / k), fh = box.firstElementChild.offsetHeight;
+        if(rows * fh + (rows - 1) * AUX_GAP <= pgScr.getBoundingClientRect().height + 1) break;
+      }
+      pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-w', (k * AUX_W + (k - 1) * AUX_GAP) + 'px');
+    }
+    let ctlW = 0;
+    new ResizeObserver(() => { const w = ctlEl.clientWidth; if(w !== ctlW){ ctlW = w; auxLayout(); } }).observe(ctlEl);
+    const onWinResize = () => { if(!el.isConnected){ window.removeEventListener('resize', onWinResize); return; } auxLayout(); };
+    window.addEventListener('resize', onWinResize);   // window height: the screens follow 45vh
     const savePp = w => { try{ if(w) localStorage.setItem(PP_KEY, String(w)); else localStorage.removeItem(PP_KEY); }catch(_){} };
     try{ setPp(parseFloat(localStorage.getItem(PP_KEY))); }catch(_){}
     // Deux écrans 16:9 côte à côte : 1 px de hauteur ≈ 2 × 16/9 px de largeur → la bordure basse suit le doigt.
@@ -75,15 +94,15 @@ window.MXLPlugins["stills"] = {
       ev.preventDefault(); grip.setPointerCapture(ev.pointerId); grip.classList.add('is-drag');
       const y0 = ev.clientY, w0 = pp.getBoundingClientRect().width;
       let w = w0;
-      const move = e => { w = setPp(w0 + (e.clientY - y0) * PX_PER_DY); };
+      const move = e => { w = setPp(w0 + (e.clientY - y0) * PX_PER_DY); auxLayout(); };
       const up = () => { grip.classList.remove('is-drag'); savePp(w);
         grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); };
       grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
     });
-    grip.addEventListener('dblclick', () => savePp(setPp(0)));
+    grip.addEventListener('dblclick', () => { savePp(setPp(0)); auxLayout(); });
     grip.addEventListener('keydown', e => {
       const d = e.key === 'ArrowUp' ? -40 : e.key === 'ArrowDown' ? 40 : 0; if(!d) return;
-      e.preventDefault(); savePp(setPp(pp.getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1)));
+      e.preventDefault(); savePp(setPp(pp.getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1))); auxLayout();
     });
 
     // Disposition « PGM seul, à droite » : la bibliothèque prend toute la hauteur à gauche. Préférence
@@ -99,6 +118,7 @@ window.MXLPlugins["stills"] = {
     const setPgmRight = on => {
       ctlEl.classList.toggle('is-pgm-right', !!on); $('.stl-pgm-right').checked = !!on;
       if(on){ try{ setSide(parseFloat(localStorage.getItem(SIDE_KEY))); }catch(_){} }
+      auxLayout();
     };
     try{ setPgmRight(localStorage.getItem(PGM_KEY) === '1'); }catch(_){}
     $('.stl-pgm-right').onchange = e => { setPgmRight(e.target.checked);
@@ -561,6 +581,7 @@ window.MXLPlugins["stills"] = {
               <button type="button" data-aux-pv title="${escH(T('plugin.stills.aux_from_pv','Mettre l\'image de la preview sur cette sortie'))}">${escH(T('plugin.stills.aux_pv','PVW'))}</button>
               <button type="button" data-aux-clear aria-label="${escH(T('plugin.stills.aux_clear','Vider la sortie (noir)'))}">✕</button>
             </figcaption></figure>`).join('');
+        auxLayout();
       }
       (s.aux || []).forEach((fr, i) => {
         const fig = auxBox.querySelector(`[data-aux="${i + 1}"]`); if(!fig) return;

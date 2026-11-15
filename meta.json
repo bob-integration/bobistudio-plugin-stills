@@ -1,7 +1,10 @@
 {
-  "version": "0.19.21",
+  "version": "0.19.22",
   "date": "2026-11-15",
   "changes": {
+    "Sorties AUX côte à côte quand les écrans sont réduits (0.19.22)": [
+      "Les AUX se rangent sur le nombre de colonnes qu'il faut pour ne pas dépasser la hauteur des écrans PREVIEW / PROGRAMME : en colonne sous de grands écrans, côte à côte quand la poignée les réduit. Recalculé au redimensionnement de la fenêtre et à chaque mouvement de la poignée."
+    ],
     "Fondu tramé : plus d'à-coups entre deux images proches (0.19.21)": [
       "Entre deux images proches, un pixel ne change que de quelques niveaux sur tout le fondu. En 8 bits, il avance de 0, 1 ou 2 niveaux par image, et les pixels qui ont le même écart changent tous sur la même image : le fondu avance par à-coups. Mesuré le 2026-11-15 sur l'enregistrement d'un testeur, puis reproduit en simulation avec ses images : même signature en 8 bits, presque régulier en 10 bits.",
       "Le fondu (et l'additif) ajoutent maintenant, avant l'arrondi, un seuil fixe propre à chaque pixel (motif de 64×64). Les changements de niveau se répartissent dans le temps. Les deux extrémités du fondu restent exactes, et l'image fixe n'est pas touchée.",
