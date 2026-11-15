@@ -1,7 +1,16 @@
 {
-  "version": "0.19.23",
+  "version": "0.19.24",
   "date": "2026-11-15",
   "changes": {
+    "Plus de message à chaque image chargée (0.19.24)": [
+      "TAKE, CUT, rappel de l'image par défaut et choix en Take direct n'affichent plus le nom du fichier en bas à droite : l'écran PROGRAMME le montre déjà. Les erreurs restent signalées."
+    ],
+    "Bibliothèque jusqu'en bas de la fenêtre (0.19.24)": [
+      "La bibliothèque d'images prend toute la hauteur qui reste sous les écrans, au lieu de s'arrêter à 440 px. Elle suit la poignée des écrans et la taille de la fenêtre."
+    ],
+    "Raccourcis clavier : interrupteur et liste dans Affichage (0.19.24)": [
+      "Menu Affichage : une case « Raccourcis clavier » les active ou les coupe (préférence du navigateur ; coupés, les numéros des cases de grille disparaissent aussi), et « Liste des raccourcis » les montre tous : Espace, Entrée, ← →, D, pavé numérique en vue Grille."
+    ],
     "Barre de réglages en haut, avec le stockage du projet (0.19.23)": [
       "La ligne Bibliothèque / Grille, Take direct, Cadrage, Transition, Image par défaut et Affichage passe au-dessus des écrans, et prend la place de la ligne « Stockage ». Le stockage du projet s'affiche au milieu de la barre : une ligne de gagnée pour les écrans et la bibliothèque."
     ],

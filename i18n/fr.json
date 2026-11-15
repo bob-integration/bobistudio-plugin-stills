@@ -16,7 +16,6 @@
   "plugin.stills.pick_image": "Choisissez une image",
   "plugin.stills.pos_size": "Position & taille",
   "plugin.stills.refresh_tip": "Rafraîchir la liste",
-  "plugin.stills.shown": "Image affichée : ",
   "plugin.stills.size_pct": "Taille (%)",
   "plugin.stills.state_na": "état indisponible",
   "plugin.stills.storage_all": "Stockage : tous les projets (aucun projet assigné)",
@@ -55,7 +54,6 @@
   "plugin.stills.stream_tip": "Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai",
   "plugin.stills.pick": "Choisir",
   "plugin.stills.lib_hint2": "Double-clic ou « Choisir » : l'image passe en PREVIEW (TAKE pour l'antenne ; en mode « Take direct », elle part aussitôt). Glisser une image sur un bin : l'y ranger.",
-  "plugin.stills.on_air": "À l'antenne : ",
   "plugin.stills.framing": "cadrage",
   "plugin.stills.since": "depuis",
   "plugin.stills.fading": "fondu en cours",
@@ -139,5 +137,16 @@
   "plugin.stills.ws_clock": "Horloge",
   "plugin.stills.wipe_angle": "Angle (°)",
   "plugin.stills.wipe_soft": "Douceur (%)",
-  "plugin.stills.wipe_reverse": "Sens inverse"
+  "plugin.stills.wipe_reverse": "Sens inverse",
+  "plugin.stills.keys": "Raccourcis clavier",
+  "plugin.stills.keys_tip": "Préférence de ce navigateur. Décoché : aucune touche n'agit sur ce panneau.",
+  "plugin.stills.keys_list": "Liste des raccourcis",
+  "plugin.stills.key_space": "Espace",
+  "plugin.stills.key_enter": "Entrée",
+  "plugin.stills.key_take": "TAKE (avec la transition réglée)",
+  "plugin.stills.key_cut": "CUT (coupe franche)",
+  "plugin.stills.key_step": "Image précédente / suivante (case voisine en vue Grille)",
+  "plugin.stills.key_default": "Rappeler l'image par défaut",
+  "plugin.stills.key_numpad": "Pavé numérique, vue Grille : cases 1 à 10",
+  "plugin.stills.keys_note": "Inactifs pendant une saisie, dans une fenêtre ouverte, ou avec Ctrl / Alt / Cmd."
 }

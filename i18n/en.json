@@ -16,7 +16,6 @@
   "plugin.stills.pick_image": "Choose an image",
   "plugin.stills.pos_size": "Position & size",
   "plugin.stills.refresh_tip": "Refresh the list",
-  "plugin.stills.shown": "Image shown: ",
   "plugin.stills.size_pct": "Size (%)",
   "plugin.stills.state_na": "state unavailable",
   "plugin.stills.storage_all": "Storage: all projects (no project assigned)",
@@ -55,7 +54,6 @@
   "plugin.stills.stream_tip": "Opens the output as a WebRTC stream in the monitor: to see a fade for real",
   "plugin.stills.pick": "Pick",
   "plugin.stills.lib_hint2": "Double-click or \"Pick\": the image goes to PREVIEW (TAKE sends it on air; in \"Direct take\" mode it goes on air at once). Drag an image onto a bin to file it there.",
-  "plugin.stills.on_air": "On air: ",
   "plugin.stills.framing": "framing",
   "plugin.stills.since": "since",
   "plugin.stills.fading": "fade in progress",
@@ -139,5 +137,16 @@
   "plugin.stills.ws_clock": "Clock",
   "plugin.stills.wipe_angle": "Angle (°)",
   "plugin.stills.wipe_soft": "Softness (%)",
-  "plugin.stills.wipe_reverse": "Reverse"
+  "plugin.stills.wipe_reverse": "Reverse",
+  "plugin.stills.keys": "Keyboard shortcuts",
+  "plugin.stills.keys_tip": "Preference of this browser. Unchecked: no key acts on this panel.",
+  "plugin.stills.keys_list": "Shortcut list",
+  "plugin.stills.key_space": "Space",
+  "plugin.stills.key_enter": "Enter",
+  "plugin.stills.key_take": "TAKE (with the set transition)",
+  "plugin.stills.key_cut": "CUT (hard cut)",
+  "plugin.stills.key_step": "Previous / next image (neighbouring cell in Grid view)",
+  "plugin.stills.key_default": "Recall the default image",
+  "plugin.stills.key_numpad": "Numeric keypad, Grid view: cells 1 to 10",
+  "plugin.stills.keys_note": "Inactive while typing, in an open dialog, or with Ctrl / Alt / Cmd."
 }

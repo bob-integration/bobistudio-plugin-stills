@@ -69,7 +69,9 @@
 .stl-side-grip span { width:4px; height:56px; border-radius:2px; background:var(--border); }
 .stl-side-grip:hover span, .stl-side-grip:focus-visible span, .stl-side-grip.is-drag span { background:var(--accent, #7aa2c8); }
 /* Vignettes sur toute la hauteur de la fenêtre (la bibliothèque commune plafonne à 440 px). */
-.stl-ctl.is-pgm-right .stl-lib-host .ml-scroll { max-height:calc(100vh - 230px); }
+/* The library fills the height left below it in the window (--stl-lib-top, set by control.js). */
+.stl-lib-host { height:max(360px, calc(100vh - var(--stl-lib-top, 300px) - 16px)); }
+.stl-lib-host.is-folded { height:auto; }
 .stl-ctl.is-pgm-right .stl-pp { grid-template-columns:minmax(0,1fr); max-width:none !important; margin:0; align-items:start; }
 .stl-ctl.is-pgm-right .stl-pane-pg { order:1; }
 .stl-ctl.is-pgm-right .stl-take-col { order:2; flex-direction:row; align-self:auto; }
@@ -156,3 +158,10 @@
 .stl-ctl dialog .stl-dlg-ok { border-color:var(--accent) !important; color:var(--accent) !important; font-weight:600; }
 /* `hidden` doit gagner sur les display:flex / grid ci-dessus (grille, barres, bibliothèque). */
 .stl-ctl [hidden] { display:none !important; }
+/* Keyboard shortcuts (Affichage menu): the list folds under the switch; off hides the grid badges. */
+.stl-keys-list > summary { cursor:pointer; font-size:0.85em; color:var(--text-muted); }
+.stl-keys-list dl { display:grid; grid-template-columns:auto 1fr; gap:4px 10px; margin:6px 0 4px; font-size:0.82em; min-width:280px; }
+.stl-keys-list dt { white-space:nowrap; } .stl-keys-list dd { margin:0; }
+.stl-keys-list kbd { font:inherit; padding:0 5px; border:1px solid var(--border); border-radius:3px; }
+.stl-keys-list p { margin:0; font-size:0.78em; color:var(--text-muted); }
+.stl-ctl.is-nokeys .stl-grid kbd { display:none; }

@@ -47,7 +47,7 @@ window.MXLPlugins["stills"] = {
     if(this._ml){ try{ this._ml.destroy(); }catch(_){} }
     const outFmt = {w:0, h:0};             // format de sortie, relevé par l'état
     const ml = this._ml = window.MediaLibrary.mount($('.stl-lib-host'), {
-      vmid, T, toast, kinds:['image'], view:'grid',
+      vmid, T, toast, kinds:['image'], view:'grid', fill:true,   // fills .stl-lib-host, sized below
       actions:[{id:'show', label:T('plugin.stills.pick','Choisir'), primary:true}],
       onAction:(id, m)=>{ selected = m.path; choose(); ml.markCurrent ? ml.markCurrent() : ml.render(); },   // repère seul : render() rechargeait toutes les vignettes
       current:()=>selected,
@@ -84,7 +84,12 @@ window.MXLPlugins["stills"] = {
     }
     let ctlW = 0;
     new ResizeObserver(() => { const w = ctlEl.clientWidth; if(w !== ctlW){ ctlW = w; auxLayout(); } }).observe(ctlEl);
-    const onWinResize = () => { if(!el.isConnected){ window.removeEventListener('resize', onWinResize); return; } auxLayout(); };
+    // Library down to the bottom of the window (2026-11-15): its host gets the height left below its
+    // own top, recomputed whenever something above it changes height (screens, grip, layout).
+    const libTop = () => { const h = $('.stl-lib-host'); if(h) ctlEl.style.setProperty('--stl-lib-top', Math.round(h.getBoundingClientRect().top + window.scrollY) + 'px'); };
+    { const ro = new ResizeObserver(libTop); ['.stl-side', '.stl-pp-opts', '.stl-grid-wrap'].forEach(q => { const n = $(q); if(n) ro.observe(n); }); }
+    requestAnimationFrame(libTop);
+    const onWinResize = () => { if(!el.isConnected){ window.removeEventListener('resize', onWinResize); return; } auxLayout(); libTop(); };
     window.addEventListener('resize', onWinResize);   // window height: the screens follow 45vh
     const savePp = w => { try{ if(w) localStorage.setItem(PP_KEY, String(w)); else localStorage.removeItem(PP_KEY); }catch(_){} };
     try{ setPp(parseFloat(localStorage.getItem(PP_KEY))); }catch(_){}
@@ -169,8 +174,7 @@ window.MXLPlugins["stills"] = {
       if(!selected){ toast(T('plugin.stills.pick_image','Choisissez une image'),'warning'); return; }
       try{
         const r = await (await api('/select', params())).json();
-        if(r.ok) toast(T('plugin.stills.shown','Image affichée : ') + selected.split('/').pop(), 'info');
-        else     errToast(r);
+        if(!r.ok) errToast(r);   // success is not announced: the PROGRAMME screen shows it
         setTimeout(refresh, 300);
       }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
     }
@@ -189,7 +193,6 @@ window.MXLPlugins["stills"] = {
         if(r.ok){
           // Les deux images s'échangent : la preview montre désormais l'ancienne image d'antenne.
           if('preview_file' in r){ selected = r.preview_file || ''; adoptPv = true; ml.markCurrent ? ml.markCurrent() : ml.render(); }
-          toast(T('plugin.stills.on_air','À l\'antenne : ') + (r.file||'').split('/').pop(), 'info');
         }
         else     errToast(r);
       }catch(e){ toast(T('plugin.stills.err_network','Erreur réseau'),'error'); }
@@ -627,7 +630,7 @@ window.MXLPlugins["stills"] = {
     // bibliothèque affichée), D = rappel de l'image par défaut. Actifs tant que ce panneau est affiché,
     // jamais pendant une saisie, dans une fenêtre ouverte, ni avec Ctrl / Alt / Cmd.
     const onKey = e => {
-      if(e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || !el.isConnected || !el.offsetParent) return;
+      if(!keysOn || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || !el.isConnected || !el.offsetParent) return;
       const t = e.target;
       if(t && t.closest && (t.closest('input,textarea,select,[contenteditable="true"],dialog') || (t !== document.body && !el.contains(t) && t.closest('[role="dialog"],.modal')))) return;
       if(document.querySelector('dialog[open]')) return;
@@ -645,6 +648,13 @@ window.MXLPlugins["stills"] = {
         if(!ml.step(k === 'ArrowRight' ? 1 : -1, 'show')) toast(T('plugin.stills.step_edge','Plus d\'image dans ce sens'), 'info'); });
       else if(k === 'd' || k === 'D') go(() => { if(!$('.stl-default-recall').disabled) takeOrCut('/default/recall'); });
     };
+    // On / off: preference of this browser, like the screen layout. Off also hides the key badges.
+    const KEYS_KEY = 'stills-keys';
+    let keysOn = true;
+    try{ keysOn = localStorage.getItem(KEYS_KEY) !== '0'; }catch(_){}
+    const setKeys = on => { keysOn = !!on; $('.stl-keys').checked = keysOn; ctlEl.classList.toggle('is-nokeys', !keysOn); };
+    setKeys(keysOn);
+    $('.stl-keys').onchange = e => { setKeys(e.target.checked); try{ localStorage.setItem(KEYS_KEY, keysOn ? '1' : '0'); }catch(_){} };
     if(this._onKey) document.removeEventListener('keydown', this._onKey);
     this._onKey = onKey;
     document.addEventListener('keydown', onKey);

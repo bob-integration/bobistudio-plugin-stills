@@ -69,6 +69,18 @@
       <div class="stl-pop-body">
         <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
         <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
+        <label data-i18n-title="plugin.stills.keys_tip" title="Préférence de ce navigateur. Décoché : aucune touche n'agit sur ce panneau."><input type="checkbox" class="stl-keys" checked> <span data-i18n="plugin.stills.keys">Raccourcis clavier</span></label>
+        <details class="stl-keys-list">
+          <summary data-i18n="plugin.stills.keys_list">Liste des raccourcis</summary>
+          <dl>
+            <dt><kbd data-i18n="plugin.stills.key_space">Espace</kbd></dt><dd data-i18n="plugin.stills.key_take">TAKE (avec la transition réglée)</dd>
+            <dt><kbd data-i18n="plugin.stills.key_enter">Entrée</kbd></dt><dd data-i18n="plugin.stills.key_cut">CUT (coupe franche)</dd>
+            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="plugin.stills.key_step">Image précédente / suivante (case voisine en vue Grille)</dd>
+            <dt><kbd>D</kbd></dt><dd data-i18n="plugin.stills.key_default">Rappeler l'image par défaut</dd>
+            <dt><kbd>1</kbd>…<kbd>9</kbd> <kbd>0</kbd></dt><dd data-i18n="plugin.stills.key_numpad">Pavé numérique, vue Grille : cases 1 à 10</dd>
+          </dl>
+          <p data-i18n="plugin.stills.keys_note">Inactifs pendant une saisie, dans une fenêtre ouverte, ou avec Ctrl / Alt / Cmd.</p>
+        </details>
         <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
         <div class="stl-status">…</div>
       </div>
