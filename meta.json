@@ -1,7 +1,13 @@
 {
-  "version": "0.19.16",
+  "version": "0.19.17",
   "date": "2026-11-15",
   "changes": {
+    "Réglages en menus, fondu à 150 ms, retard de publication mesuré (0.19.17)": [
+      "Fondus plus réguliers au départ : au TAKE, l'image qui quitte l'antenne passe en preview TELLE QUELLE au lieu d'être recalculée (décodage et mise à l'échelle) au moment même où le fondu démarre — ce calcul retardait la publication des premières images du fondu. Pendant un fondu, l'interface ne redemande plus la vignette de preview au conteneur.",
+      "Cadrage, fondu et position quittent le bas de la page : menu « Cadrage et fondu » à côté d'« Image par défaut », et « Position et taille… » ouvre une fenêtre. La bibliothèque est désormais tout en bas : la faire défiler ne fait plus sauter la page.",
+      "Fondu par défaut : 150 ms pour un nouveau conteneur (0 = coupe franche). Les conteneurs existants gardent leur réglage.",
+      "Nouvelles mesures sur :8080 : retard de publication de chaque image dans son créneau (pire de la dernière seconde, pire pendant un fondu, nombre d'images publiées au-delà de 10, 15 et 20 ms) et créneau écrit deux fois. Une image publiée en retard n'est pas « ratée », mais une sortie qui la lit au bord du créneau montre la précédente : c'est ce qui faisait saccader les fondus sur une sortie SDI alors que slots_missed restait à 0."
+    ],
     "Sorties AUX à droite du PGM (0.19.16)": [
       "Les sorties AUX se rangent en colonne à droite du PGM, au lieu d'une rangée sous les écrans qui prenait de la hauteur."
     ],

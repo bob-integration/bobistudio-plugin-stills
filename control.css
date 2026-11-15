@@ -7,15 +7,6 @@
 .stl-row label { display:flex; align-items:center; gap:6px; font-size:0.88em; }
 .stl-fit .stl-lbl { color:var(--text-muted); font-size:0.82em; }
 
-/* Section options repliable — pilule centrée (cf. correcteur de couleur) */
-.stl-adv-row { display:flex; align-items:center; gap:14px; margin:2px 0; }
-.stl-adv-row::before, .stl-adv-row::after { content:""; flex:1; height:1px; background:var(--border-soft); }
-.stl-adv-toggle { padding:5px 14px !important; border-radius:999px !important;
-    color:var(--text-muted) !important; font-size:0.82em; font-weight:600; letter-spacing:0.3px; }
-.stl-adv-toggle.is-open { color:var(--accent, #7aa2c8) !important; border-color:var(--accent, #7aa2c8) !important;
-    background:var(--accent-soft, rgba(122,162,200,0.15)) !important; }
-.stl-adv { display:flex; gap:12px; flex-wrap:wrap; }
-.stl-adv label { display:flex; flex-direction:column; gap:3px; font-size:0.78em; color:var(--text-muted); }
 .stl-x, .stl-y, .stl-size { width:90px; background:var(--bg-input, var(--bg-panel)); color:var(--text);
     border:1px solid var(--border-soft); border-radius:4px; padding:3px 6px; }
 
@@ -61,7 +52,7 @@
 @media (max-width: 720px) { .stl-pp { grid-template-columns:1fr; } .stl-take-col { flex-direction:row; } }
 
 /* Colonnes : empilées par défaut (comportement historique). */
-.stl-side, .stl-side2 { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.stl-side { display:flex; flex-direction:column; gap:10px; min-width:0; }
 .stl-side-grip { display:none; }
 
 /* Disposition « PGM seul, à droite » (préférence de l'opérateur, mémorisée par navigateur) : la
@@ -73,7 +64,6 @@
 .stl-ctl.is-pgm-right > .stl-project-banner, .stl-ctl.is-pgm-right > .stl-noproject-banner { grid-column:1 / -1; grid-row:1; }
 .stl-ctl.is-pgm-right > .stl-browse { grid-column:1; grid-row:2 / span 2; min-width:0; }
 .stl-ctl.is-pgm-right > .stl-side { grid-column:3; grid-row:2; }
-.stl-ctl.is-pgm-right > .stl-side2 { grid-column:3; grid-row:3; }
 .stl-ctl.is-pgm-right > .stl-side-grip { grid-column:2; grid-row:2 / span 2; align-self:stretch; display:flex;
     align-items:center; justify-content:center; cursor:ew-resize; touch-action:none; outline:none; border-radius:4px; }
 .stl-side-grip span { width:4px; height:56px; border-radius:2px; background:var(--border); }
@@ -142,5 +132,12 @@
 .stl-pop[open] > summary { border-color:var(--accent); }
 .stl-pop-body { position:absolute; right:0; top:calc(100% + 4px); z-index:40; display:flex; flex-direction:column; align-items:stretch; gap:6px;
     min-width:200px; padding:8px; background:var(--bg-elev); border:1px solid var(--border); border-radius:6px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+.stl-pop-body.stl-fit label { display:flex; align-items:center; gap:6px; }
+.stl-pop-body .stl-fade { width:90px; }
+.stl-pop-body .stl-status { font-size:0.75em; color:var(--text-muted); white-space:normal; max-width:260px; }
+.stl-posdlg form { display:flex; flex-direction:column; gap:8px; }
+.stl-posdlg label { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.stl-posdlg input { width:100px; }
+.stl-posdlg menu { display:flex; justify-content:flex-end; padding:0; margin:8px 0 0; }
 /* `hidden` doit gagner sur les display:flex / grid ci-dessus (grille, barres, bibliothèque). */
 .stl-ctl [hidden] { display:none !important; }

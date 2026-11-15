@@ -254,7 +254,7 @@ state = {{
     "size":   float(CONFIG.get("size") or 100), # échelle %
     # Fondu entre deux images (ms) ; 0 = coupe franche (comportement historique). Défaut du
     # réglage `transition_ms`, surchargé à chaque /select par `fade_ms`, ou à chaud par /transition.
-    "transition_ms": max(0.0, float(CONFIG.get("transition_ms") or 0)),
+    "transition_ms": max(0.0, float(CONFIG["transition_ms"]) if CONFIG.get("transition_ms") not in (None, "") else 150.0),
     # MODE TAKE (comme un mélangeur) : choisir une image la met en PREVIEW, `/take` l'envoie à
     # l'antenne. `take_direct` = ancien comportement (choisir = antenne). Défaut : mode Take.
     "take_direct": _as_bool_cfg(CONFIG.get("take_direct"), default=False),
@@ -713,6 +713,12 @@ def _feed(inst, opened):
     # trames successives) : c'est la seule mesure qui ne dépend pas d'un observateur qui pourrait
     # lui-même prendre du retard. Publié sur :8080 (`slots_missed`) — à comparer à l'intention.
     last_idx = None; missed = 0
+    # PUBLISH LAG (2026-11-15): time from the start of a frame's slot to the end of its last
+    # commit. A frame committed late is not « missed » (it is in its slot), but an output that
+    # reads it at the slot boundary gets the previous one: repeat, then a double step. Fades
+    # stuttered that way on an SDI output while slots_missed stayed at 0.
+    lag = {{"win_max": 0.0, "fade_max": 0.0, "over10": 0, "over15": 0, "over20": 0, "dup_index": 0}}
+    t_slot = None
     # Case de l'anneau → image qu'elle CONTIENT déjà (l'objet bytes lui-même, comparé par `is`).
     # Une image fixe n'a pas à être recopiée à chaque trame : la case de l'anneau la porte encore
     # depuis le tour précédent. Mesuré le 2026-10-23 sur dell-1 (stills-Atelier, 1080p 10 bits) :
@@ -772,13 +778,16 @@ def _feed(inst, opened):
             idx = fill_w.next_index(lookahead=1)
             if last_idx is not None and idx > last_idx + 1:
                 missed += idx - last_idx - 1
+            if last_idx is not None and idx == last_idx:
+                lag["dup_index"] += 1          # same slot written twice: one weight never shown
             last_idx = idx
             # Réveil au DÉBUT du créneau, pas à son centre : `index_time_ns(X)` est le MILIEU du
             # créneau X (current_index passe à X 10,0 ms avant, mesuré sur dell-1 le 2026-10-25).
             # L'image est connue d'avance : dormir jusqu'au centre la publiait à 10,3 ms sur 20, et
             # un mélangeur « au plus rapide » abandonnait l'attente à la demi-période.
             t_idx = fill_w.index_time_ns(idx)
-            bobimxl.sleep_until_tai(t_idx - (fill_w.index_time_ns(idx + 1) - t_idx) // 2)
+            t_slot = t_idx - (fill_w.index_time_ns(idx + 1) - t_idx) // 2
+            bobimxl.sleep_until_tai(t_slot)
         else:
             t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
         with frames_lock:
@@ -861,6 +870,12 @@ def _feed(inst, opened):
             for (wf, wk), (pf, pk) in zip(aux_w, payloads):
                 _put_still(wf, pf, idx)
                 _put_still(wk, pk, idx)
+        if t_slot is not None:
+            l_ms = (bobimxl.now_tai() - t_slot) / 1e6
+            lag["win_max"] = max(lag["win_max"], l_ms)
+            if fd is not None:
+                lag["fade_max"] = max(lag["fade_max"], l_ms)
+            lag["over10"] += l_ms > 10; lag["over15"] += l_ms > 15; lag["over20"] += l_ms > 20
         win_cnt += 1
         el = time.time() - win_start
         # frame_index à CHAQUE trame : publié une fois par fenêtre d'une seconde, il datait de 0 à
@@ -872,6 +887,13 @@ def _feed(inst, opened):
             with metrics_lock:
                 metrics["fps"] = round(win_cnt / el, 1)
                 metrics["slots_missed"] = missed
+                metrics["publish_lag_max_ms"] = round(lag["win_max"], 2)     # this last second
+                metrics["publish_lag_fade_max_ms"] = round(lag["fade_max"], 2)   # worst, in any fade
+                metrics["publish_late_10ms"] = lag["over10"]
+                metrics["publish_late_15ms"] = lag["over15"]
+                metrics["publish_late_20ms"] = lag["over20"]
+                metrics["slot_written_twice"] = lag["dup_index"]
+            lag["win_max"] = 0.0
             win_cnt = 0; win_start = time.time()
         if not GENLOCK:
             dt = period - (time.time() - t0)
@@ -1110,9 +1132,20 @@ def _air_swapping(body):
         old = _norm_frame(state)
     with prog_lock:
         on_air = prog["meta"] is not None
+        old_rgba, old_meta = prog["rgba"], prog["meta"]
     code, out = _air(body, force_fade=True)
     if code == 200:
-        if on_air and old["file"]:
+        if on_air and old["file"] and old_rgba is not None:
+            # The old program image is ALREADY rendered, with its framing: reuse it. Re-composing
+            # it (_do_preview: decode, resize, convert) took the GIL right when the fade starts,
+            # and the output thread published its first frames late — the SDI output showed a
+            # repeat then a double step at every TAKE (measured 2026-11-15, 0.19.16).
+            with state_lock:
+                state["preview"] = old
+            with prev_lock:
+                prev["gen"] += 1
+                prev["rgba"] = old_rgba; prev["meta"] = old_meta; prev["error"] = ""
+        elif on_air and old["file"]:
             _do_preview(old["file"], old["fit"], old["x"], old["y"], old["size"])
         else:
             _clear_preview()

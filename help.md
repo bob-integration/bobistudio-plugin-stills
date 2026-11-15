@@ -27,7 +27,7 @@ Dans la bibliothèque (base des médias : bins, recherche, serveurs réseau, fic
 
 Une grille est une fiche de la base des médias, comme une playlist : elle se range dans les bins et les projets, se partage, s'exporte et s'importe. Chacun ouvre les siennes sur le panneau, en onglets (**Grilles ▾**) : pour une émission, préparez une grille par thème et passez de l'une à l'autre. Les onglets ouverts vous suivent d'un poste à l'autre.
 
-**Préparer** : glissez des images de la bibliothèque sur les cases (plusieurs à la fois remplissent les cases vides), glissez une case sur une autre pour les échanger. Au doigt : choisissez l'image dans la bibliothèque, puis touchez la case. Le menu d'une case règle son cadrage (celui des réglages Cadrage et Position), son nom, ou la vide. Colonnes et rangées se choisissent en haut. L'antenne n'est pas touchée pendant la préparation, et tout est enregistré au fil des gestes.
+**Préparer** : glissez des images de la bibliothèque sur les cases (plusieurs à la fois remplissent les cases vides), glissez une case sur une autre pour les échanger. Au doigt : choisissez l'image dans la bibliothèque, puis touchez la case. Le menu d'une case règle son cadrage (celui réglé dans le menu Cadrage et fondu), son nom, ou la vide. Colonnes et rangées se choisissent en haut. L'antenne n'est pas touchée pendant la préparation, et tout est enregistré au fil des gestes.
 
 ## Sorties AUX
 
@@ -70,11 +70,11 @@ Menu d'une image → **Éditer…** : recadrage, fond (dont l'image floutée), z
 | Au plus grand | Agrandie sans déformer (bandes transparentes) |
 | Plein cadre | Étirée pour remplir (peut déformer) |
 
-La section **Position & taille** ajoute un réglage X/Y/Taille en % du cadre (indépendant de la résolution).
+Le cadrage se règle dans le menu **Cadrage et fondu**, en haut ; **Position et taille…** y ouvre le réglage X/Y/Taille en % du cadre (indépendant de la résolution).
 
 ## Fondu
 
-Le réglage **Fondu (ms)** donne la durée du fondu enchaîné au changement d'image (0 = coupe franche). Repositionner la même image reste une coupe.
+Le réglage **Fondu (ms)**, dans le menu **Cadrage et fondu**, donne la durée du fondu enchaîné au changement d'image : 150 ms par défaut, 0 = coupe franche. Repositionner la même image reste une coupe.
 
 ## Macros
 

@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.16",
+  "version": "0.19.17",
   "requires": {"core_min": "0.9.9"},
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
@@ -37,7 +37,7 @@
     "media_root": "/mnt/media",
     "genlock": true,
     "log_level": "info",
-    "transition_ms": 0,
+    "transition_ms": 150,
     "take_direct": false,
     "aux_outputs": 0,
     "stills_state": {}
@@ -179,7 +179,7 @@
           "key": "ms",
           "label": "Durée (ms, 0 = coupe franche)",
           "type": "number",
-          "default": 0,
+          "default": 150,
           "min": 0,
           "max": 10000
         }
@@ -468,7 +468,7 @@
             "type": "number",
             "min": 0,
             "max": 10000,
-            "default": 0,
+            "default": 150,
             "path": "transition_ms"
           }
         }
@@ -510,10 +510,10 @@
       "key": "transition_ms",
       "type": "number",
       "label": "Fondu entre deux images (ms)",
-      "help": "Durée du fondu enchaîné quand on change d'image (remplissage ET clé). 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »).",
+      "help": "Durée du fondu enchaîné quand on change d'image (remplissage ET clé), 150 ms par défaut. 0 = coupe franche. Ne s'applique qu'à un changement d'image : repositionner l'image reste une coupe. Surchargeable à chaque changement (paramètre « Fondu » de l'action « Afficher une image ») et à chaud (action « Durée de fondu par défaut »).",
       "min": 0,
       "max": 10000,
-      "default": 0,
+      "default": 150,
       "scope": "user"
     },
     {

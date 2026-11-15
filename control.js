@@ -227,8 +227,10 @@ window.MXLPlugins["stills"] = {
         const fe = $('.stl-fade'); if(fe && fe !== document.activeElement) fe.value = Math.round(s.transition_ms || 0);
         const kv = $('.stl-viewkey').checked ? 'key' : 'fill', base = `/api/containers/${vmid}/plugin`;
         const pm = s.preview_meta, gm = s.program_meta;
-        // Preview
-        if(pm && !s.preview_error){
+        // Preview. PENDANT UN FONDU, sa vignette n'est pas redemandée : l'encoder (JPEG d'une image
+        // pleine définition) prend au conteneur le temps qu'il doit à la publication du fondu.
+        if(s.fading && $('.stl-pv-img').dataset.u){ /* reprise à la fin du fondu */ }
+        else if(pm && !s.preview_error){
           const g = `${s.preview_gen}-${kv}`;
           setImg('pv', `${base}/preview.jpg?view=${kv}&g=${g}`, true);
           $('.stl-pv-info').textContent = infoLine(pm);
@@ -624,13 +626,10 @@ window.MXLPlugins["stills"] = {
     el.querySelectorAll('input[name="stl-fit"]').forEach(r => r.onchange = choose);
     ['.stl-x','.stl-y','.stl-size'].forEach(s => { const e = $(s); if(e) e.onchange = choose; });
 
-    const adv = $('.stl-adv'), advBtn = $('.stl-adv-toggle');
-    if(advBtn) advBtn.onclick = () => {
-      const open = adv.hasAttribute('hidden');
-      if(open) adv.removeAttribute('hidden'); else adv.setAttribute('hidden','');
-      advBtn.classList.toggle('is-open', open);
-      advBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    };
+    // Position et taille : une fenêtre ouverte depuis le menu « Cadrage et fondu » (2026-11-15) —
+    // les réglages du bas de page sont montés en menus, la bibliothèque est désormais tout en bas.
+    const posDlg = $('.stl-posdlg');
+    $('.stl-pos-open').onclick = () => { if(!posDlg.open) posDlg.showModal(); };
 
     $('.stl-monitor').onclick = () => {
       const hn = inst.hostname || '';

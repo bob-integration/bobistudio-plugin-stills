@@ -119,5 +119,8 @@
   "plugin.stills.aux_from_pv": "Mettre l'image de la preview sur cette sortie",
   "plugin.stills.aux_pv": "PVW",
   "plugin.stills.aux_clear": "Vider la sortie (noir)",
-  "plugin.stills.display_menu": "Affichage"
+  "plugin.stills.display_menu": "Affichage",
+  "plugin.stills.framing_menu": "Cadrage et fondu",
+  "plugin.stills.pos_size_open": "Position et taille…",
+  "plugin.stills.close": "Fermer"
 }

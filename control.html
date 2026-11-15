@@ -49,6 +49,16 @@
     <span class="stl-sp"></span>
     <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
     <details class="stl-pop">
+      <summary data-i18n="plugin.stills.framing_menu">Cadrage et fondu</summary>
+      <div class="stl-pop-body stl-fit">
+        <label><input type="radio" name="stl-fit" value="native" checked> <span data-i18n="plugin.stills.fit_native">Pixel à pixel</span></label>
+        <label><input type="radio" name="stl-fit" value="fit"> <span data-i18n="plugin.stills.fit_fit">Au plus grand</span></label>
+        <label><input type="radio" name="stl-fit" value="stretch"> <span data-i18n="plugin.stills.fit_stretch">Plein cadre</span></label>
+        <button type="button" class="stl-pos-open" data-i18n="plugin.stills.pos_size_open">Position et taille…</button>
+        <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée du fondu au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.fade">Fondu (ms)</span> <input type="number" class="stl-fade" value="150" step="50" min="0" max="10000"></label>
+      </div>
+    </details>
+    <details class="stl-pop">
       <summary><span data-i18n="plugin.stills.default_lbl">Image par défaut :</span> <strong class="stl-default-name">—</strong></summary>
       <div class="stl-pop-body">
         <button type="button" class="stl-default-set" data-i18n="plugin.stills.default_set" data-i18n-title="plugin.stills.default_set_tip" title="L'image en preview, avec son cadrage, devient l'image par défaut">Définir</button>
@@ -61,6 +71,7 @@
         <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
         <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
         <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
+        <div class="stl-status">…</div>
       </div>
     </details>
   </div>
@@ -81,6 +92,14 @@
     </div>
     <div class="stl-lib-host"></div>
     <input type="file" class="stl-gimport" accept=".json,application/json" hidden>
+    <dialog class="stl-posdlg" data-i18n-aria="plugin.stills.pos_size" aria-label="Position et taille">
+      <form method="dialog" class="stl-adv">
+        <label><span data-i18n="plugin.stills.x_pct">X (% du cadre)</span> <input type="number" class="stl-x" value="0" step="1"></label>
+        <label><span data-i18n="plugin.stills.y_pct">Y (% du cadre)</span> <input type="number" class="stl-y" value="0" step="1"></label>
+        <label><span data-i18n="plugin.stills.size_pct">Taille (%)</span> <input type="number" class="stl-size" value="100" step="1" min="1"></label>
+        <menu><button type="submit" value="close" data-i18n="plugin.stills.close">Fermer</button></menu>
+      </form>
+    </dialog>
     <dialog class="stl-gdlg">
       <form method="dialog" class="stl-gdlg-form">
         <label><span class="stl-gdlg-title"></span> <input class="stl-gdlg-name" maxlength="120" required autocomplete="off"></label>
@@ -92,27 +111,4 @@
     </dialog>
   </div>
 
-  <div class="stl-side2">
-
-  <div class="stl-row stl-fit">
-    <span class="stl-lbl" data-i18n="plugin.stills.fit_lbl">Cadrage :</span>
-    <label><input type="radio" name="stl-fit" value="native" checked> <span data-i18n="plugin.stills.fit_native">Pixel à pixel</span></label>
-    <label><input type="radio" name="stl-fit" value="fit"> <span data-i18n="plugin.stills.fit_fit">Au plus grand</span></label>
-    <label><input type="radio" name="stl-fit" value="stretch"> <span data-i18n="plugin.stills.fit_stretch">Plein cadre</span></label>
-  </div>
-
-  <div class="stl-adv-row">
-    <button type="button" class="stl-adv-toggle" aria-expanded="false" data-i18n="plugin.stills.pos_size">Position &amp; taille</button>
-  </div>
-  <div class="stl-adv" hidden>
-    <label><span data-i18n="plugin.stills.x_pct">X (% du cadre)</span><input type="number" class="stl-x" value="0" step="1"></label>
-    <label><span data-i18n="plugin.stills.y_pct">Y (% du cadre)</span><input type="number" class="stl-y" value="0" step="1"></label>
-    <label><span data-i18n="plugin.stills.size_pct">Taille (%)</span><input type="number" class="stl-size" value="100" step="1" min="1"></label>
-  </div>
-
-  <div class="stl-row">
-    <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée du fondu au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.fade">Fondu (ms)</span><input type="number" class="stl-fade" value="0" step="100" min="0" max="10000"></label>
-  </div>
-  <div class="stl-status">…</div>
-  </div>
 </div>
