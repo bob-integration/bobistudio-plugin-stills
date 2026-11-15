@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.17",
+  "version": "0.19.18",
   "requires": {"core_min": "0.9.9"},
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
@@ -108,7 +108,8 @@
       "snapshot": "/persisted",
       "settings": [
         "/default/set",
-        "/aux"
+        "/aux",
+        "/transition"
       ]
     }
   },
@@ -172,7 +173,7 @@
     },
     {
       "id": "transition",
-      "label": "Durée de fondu par défaut",
+      "label": "Transition (durée, type, volet)",
       "endpoint": "/transition",
       "params": [
         {
@@ -182,6 +183,84 @@
           "default": 150,
           "min": 0,
           "max": 10000
+        },
+        {
+          "key": "type",
+          "label": "Type",
+          "type": "text",
+          "default": "dissolve",
+          "options": [
+            {
+              "value": "dissolve",
+              "label": "Fondu"
+            },
+            {
+              "value": "additive",
+              "label": "Fondu additif"
+            },
+            {
+              "value": "wipe",
+              "label": "Volet"
+            }
+          ]
+        },
+        {
+          "key": "direction",
+          "label": "Forme du volet",
+          "type": "text",
+          "default": "linear",
+          "options": [
+            {
+              "value": "linear",
+              "label": "Linéaire"
+            },
+            {
+              "value": "iris",
+              "label": "Iris"
+            },
+            {
+              "value": "box",
+              "label": "Boîte"
+            },
+            {
+              "value": "diamond",
+              "label": "Losange"
+            },
+            {
+              "value": "star",
+              "label": "Étoile"
+            },
+            {
+              "value": "heart",
+              "label": "Cœur"
+            },
+            {
+              "value": "clock",
+              "label": "Horloge"
+            }
+          ]
+        },
+        {
+          "key": "angle",
+          "label": "Angle du volet (°)",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 360
+        },
+        {
+          "key": "softness",
+          "label": "Douceur du bord (0 à 1)",
+          "type": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "key": "reverse",
+          "label": "Sens inverse",
+          "type": "bool",
+          "default": false
         }
       ]
     },
@@ -418,6 +497,13 @@
       "endpoint": "/state",
       "path": "aux4_file",
       "type": "text"
+    },
+    {
+      "id": "transition_type",
+      "label": "Type de transition",
+      "endpoint": "/state",
+      "path": "transition_type",
+      "type": "text"
     }
   ],
   "param_tree": {
@@ -464,12 +550,60 @@
         "endpoint": "/transition",
         "fields": {
           "ms": {
-            "label": "Fondu par défaut (ms)",
+            "label": "Durée (ms)",
             "type": "number",
             "min": 0,
             "max": 10000,
             "default": 150,
             "path": "transition_ms"
+          },
+          "type": {
+            "label": "Type",
+            "type": "enum",
+            "options": [
+              "dissolve",
+              "additive",
+              "wipe"
+            ],
+            "default": "dissolve",
+            "path": "transition_type"
+          },
+          "direction": {
+            "label": "Forme du volet",
+            "type": "enum",
+            "options": [
+              "linear",
+              "iris",
+              "box",
+              "diamond",
+              "star",
+              "heart",
+              "clock"
+            ],
+            "default": "linear",
+            "path": "wipe_direction"
+          },
+          "angle": {
+            "label": "Angle du volet",
+            "type": "number",
+            "min": 0,
+            "max": 360,
+            "default": 0,
+            "path": "wipe_angle"
+          },
+          "softness": {
+            "label": "Douceur du bord",
+            "type": "number",
+            "min": 0,
+            "max": 1,
+            "default": 0.1,
+            "path": "wipe_softness"
+          },
+          "reverse": {
+            "label": "Sens inverse",
+            "type": "bool",
+            "default": false,
+            "path": "wipe_reverse"
           }
         }
       },

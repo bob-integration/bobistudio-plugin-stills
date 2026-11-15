@@ -255,6 +255,9 @@ state = {{
     # Fondu entre deux images (ms) ; 0 = coupe franche (comportement historique). Défaut du
     # réglage `transition_ms`, surchargé à chaque /select par `fade_ms`, ou à chaud par /transition.
     "transition_ms": max(0.0, float(CONFIG["transition_ms"]) if CONFIG.get("transition_ms") not in (None, "") else 150.0),
+    # Type de transition (fondu, additif, volet) et réglage du volet : réglés à chaud (/transition),
+    # persistés avec l'image par défaut et les AUX (`stills_state.transition`). Normalisés plus bas.
+    "transition": dict({{"type": "dissolve", "wipe": {{}}}}, **dict(_PERSISTED.get("transition") or {{}})),
     # MODE TAKE (comme un mélangeur) : choisir une image la met en PREVIEW, `/take` l'envoie à
     # l'antenne. `take_direct` = ancien comportement (choisir = antenne). Défaut : mode Take.
     "take_direct": _as_bool_cfg(CONFIG.get("take_direct"), default=False),
@@ -437,6 +440,428 @@ def _mix_prepped(pr, w):
     return pr[2].view(np.uint8)
 
 
+# ─── TRANSITIONS PAR LE NOYAU C (0.19.18, 2026-11-15) ────────────────────────────────────────
+# Fondu et volets passent par le noyau du mélangeur (libbobi_mvk, déjà dans l'image d'exécution :
+# bobimxl.mvk_mixf_into / mvk_mixmap_into) : UNE passe par plan, de l'ancienne et de la nouvelle image
+# telles quelles vers le grain, en C et sur plusieurs cœurs, hors du verrou de Python. Plus de
+# préparation au départ (deux tableaux flottants de 16 Mo par plan) : le départ du fondu ne coûte
+# plus rien. Noyau absent (image trop ancienne) : le fondu garde son calcul numpy d'avant, le volet
+# un repli numpy.
+_MVK = bool(getattr(bobimxl, "mvk_available", lambda: False)())
+# « additive » : comme le mélangeur (blend_yuv_additive) — à mi-course les deux luminances
+# s'ajoutent (écrêtées), la chrominance reste un fondu pondéré ; la découpe (Key) reste un fondu.
+TRANSITION_TYPES = ("dissolve", "additive", "wipe")
+WIPE_DEFAULT = dict(direction="linear", angle=0.0, softness=0.10, reverse=False)
+_Y_N = WIDTH * HEIGHT
+_UV_N = UV_W * UV_H
+
+
+def _planes(buf):
+    """(Y, U, V) : vues 2D en échantillons d'une trame planar (bytes ou tableau)."""
+    a = np.frombuffer(buf, dtype=_NP_DT) if isinstance(buf, (bytes, bytearray, memoryview)) else buf.view(_NP_DT)
+    return (a[:_Y_N].reshape(HEIGHT, WIDTH), a[_Y_N:_Y_N + _UV_N].reshape(UV_H, UV_W),
+            a[_Y_N + _UV_N:_Y_N + 2 * _UV_N].reshape(UV_H, UV_W))
+
+
+def _mix_ends(pairs, w, m, r0, r1):
+    """Lignes [r0, r1) de chaque (ancienne, nouvelle, sortie[, additif]) — plans (Y, U, V) — de
+    `pairs` : fondu de poids `w` (m None), additif sur la luminance si demandé, ou volet de masque
+    `m` (part de la nouvelle, plein cadre)."""
+    c0, c1 = r0 // _CH, -(-r1 // _CH)
+    for A, B, O, *opt in pairs:
+        add = bool(opt and opt[0])
+        for k in range(3):
+            lo, hi = (r0, r1) if k == 0 else (c0, c1)
+            a, b, o = A[k][lo:hi], B[k][lo:hi], O[k][lo:hi]
+            if m is None and add and k == 0:
+                ca, cb = min(1.0, 2.0 * (1.0 - w)), min(1.0, 2.0 * w)
+                if _MVK and bobimxl.mvk_mixf_into(o, a, b, ca, cb, clip=True, maxv=_MAXV):
+                    continue
+                o[...] = np.clip(a.astype(np.float32) * ca + b.astype(np.float32) * cb, 0, _MAXV).astype(_NP_DT)
+                continue
+            if m is None:
+                if _MVK and bobimxl.mvk_mixf_into(o, a, b, 1.0 - w, w):
+                    continue
+                mm = np.float32(w)
+            else:
+                mm, cs = (m[lo:hi], 1) if k == 0 else (m[lo * _CH:hi * _CH:_CH], _CW)
+                if _MVK and bobimxl.mvk_mixmap_into(o, a, b, mm, m_colstep=cs):
+                    continue
+                mm = mm[:, ::cs] if cs > 1 else mm
+            o[...] = (a.astype(np.float32) * (1.0 - mm) + b.astype(np.float32) * mm).astype(_NP_DT)
+
+
+def _wipe_norm_s(raw):
+    """Réglage de volet du Still : forme (noms du mélangeur), angle, douceur, sens — bornés."""
+    w = dict(WIPE_DEFAULT)
+    raw = raw if isinstance(raw, dict) else {{}}
+    d = str(raw.get("direction") or w["direction"]).strip().lower()
+    w["direction"] = d if d in WIPE_NAMES else "linear"
+    try:
+        w["angle"] = float(raw.get("angle", w["angle"]) or 0.0) % 360.0
+    except (TypeError, ValueError):
+        pass
+    try:
+        w["softness"] = max(0.0, min(1.0, float(raw.get("softness", w["softness"]))))
+    except (TypeError, ValueError):
+        pass
+    w["reverse"] = _as_bool_cfg(raw.get("reverse"), default=False)
+    return w
+
+
+def _wipe_mask(w, alpha, owner):
+    """Part de la nouvelle image pour une trame de volet (course du bord comme au mélangeur :
+    α = 0 → tout l'ancienne, α = 1 → toute la nouvelle, quelle que soit la forme)."""
+    d, M, px, tl = _wipe_field(_wipe_geom(w))
+    s = max(px, float(w.get("softness", 0.10) or 0.0) * M)
+    mg = 0.01 * s
+    e = (-0.5 * s - mg) + max(0.0, min(1.0, alpha)) * (M + s + 2.0 * mg)
+    if owner is None:
+        return _ramp_into(np.empty((HEIGHT, WIDTH), np.float32), d, e, s, M, bool(w.get("reverse")), tl, False)
+    return _ramp_into(_wipe_buf(owner, 0), d, e, s, M, bool(w.get("reverse")), tl, True)
+
+
+def _field_ready(w, wait_s=0.3):
+    """Le champ du volet est-il prêt ? Sinon on le lance en tâche de fond et on l'attend au plus
+    `wait_s` SANS verrou (la sortie continue) — comme le départ d'un volet du mélangeur."""
+    geom = _wipe_geom(w)
+    with _wipe_fields_lock:
+        if (geom, False) in _wipe_fields:
+            return True
+    _wipe_prefetch(w)
+    t_end = time.monotonic() + wait_s
+    while time.monotonic() < t_end:
+        time.sleep(0.005)
+        with _wipe_fields_lock:
+            if (geom, False) in _wipe_fields:
+                return True
+    return False
+
+
+# ─── Géométrie des volets : REPRISE DU MÉLANGEUR (plugins/mixer/script.py, 0.23.x) ─────────────
+# Mêmes formes, même champ de distance, même rampe par tuiles : un volet du Still est le volet du
+# mélangeur, au pixel près. À factoriser dans bobimxl (commun aux deux) à la prochaine version du
+# cœur ; d'ici là, toute correction se fait des DEUX côtés.
+WIPE_SHAPES = ("linear", "iris", "box", "diamond", "star", "heart", "clock")
+# Les trois anciens noms sont des volets LINÉAIRES à angle prédéfini : acceptés partout (presets
+# persistés, macros, ATEM), normalisés en « linear » + angle là où l'angle se règle.
+WIPE_LEGACY_ANGLES = {{"horizontal": 0.0, "vertical": 90.0, "diagonal": 45.0}}
+WIPE_NAMES = ("horizontal", "vertical", "diagonal") + WIPE_SHAPES
+WIPE_REPEAT_MAX = 16
+
+
+_STAR_K = 0.381966          # rayon intérieur / extérieur de l'étoile régulière à 5 branches
+
+
+def _wipe_geom(w):
+    """Clé de GÉOMÉTRIE d'un réglage (forme, angle effectif, centre, symétrie, répétition).
+    Un ancien nom donne son angle prédéfini, auquel s'ajoute `angle` s'il y en a un (AUTO d'un
+    keyer : pas d'angle propre, le nom suffit)."""
+    name = str(w.get("direction") or "linear").strip().lower()
+    shape = "linear" if name in WIPE_LEGACY_ANGLES else (name if name in WIPE_SHAPES else "linear")
+    try:
+        ang = (WIPE_LEGACY_ANGLES.get(name, 0.0) + float(w.get("angle", 0.0) or 0.0)) % 360.0
+    except Exception:
+        ang = WIPE_LEGACY_ANGLES.get(name, 0.0)
+    def _f(k, dflt):
+        try:
+            return round(max(0.0, min(1.0, float(w.get(k, dflt)))), 4)
+        except Exception:
+            return dflt
+    try:
+        rep = max(1, min(WIPE_REPEAT_MAX, int(w.get("repeat", 1) or 1)))
+    except Exception:
+        rep = 1
+    return (shape, round(ang, 3), _f("center_x", 0.5), _f("center_y", 0.5),
+            bool(w.get("symmetry")), rep)
+
+
+def _rot_cs(ang):
+    """(cos, sin) de l'angle du volet — angles droits EXACTS (cos 90° ≠ 0 en flottant)."""
+    q = ang % 360.0
+    exact = {{0.0: (1.0, 0.0), 90.0: (0.0, 1.0), 180.0: (-1.0, 0.0), 270.0: (0.0, -1.0)}}
+    return exact.get(q, (float(np.cos(np.radians(q))), float(np.sin(np.radians(q)))))
+
+
+def _rot_coords(cx, cy, c, s, r0, r1):
+    """Coordonnées (u, v) des centres de pixel des lignes [r0, r1), relatives à (cx, cy) en pixels,
+    tournées de l'angle (c, s) (sens horaire à l'écran, y vers le bas) : u le long de l'axe du
+    volet, v en travers."""
+    xs = (np.arange(WIDTH, dtype=np.float32) + np.float32(0.5 - cx))[None, :]
+    ys = (np.arange(r0, r1, dtype=np.float32) + np.float32(0.5 - cy))[:, None]
+    u = xs * np.float32(c) + ys * np.float32(s)
+    v = ys * np.float32(c) - xs * np.float32(s)
+    return u, v
+
+
+_heart_tab = []     # [(angles, rayons, rayon mini)] — table polaire du cœur, calculée une fois
+
+
+def _heart_table():
+    """Rayon du bord du cœur (X² + Y² − 1)³ − X²·Y³ = 0 dans chaque direction (Y vers le haut) :
+    1024 directions, premier passage par la frontière le long du rayon (forme étoilée autour de
+    l'origine). Quelques ms, une fois — remplace le précalcul plein cadre en tâche de fond."""
+    if _heart_tab:
+        return _heart_tab[0]
+    n = 1024
+    phi = np.linspace(0.0, 2.0 * np.pi, n, endpoint=False)
+    t = np.linspace(0.0005, 2.0, 4000)[:, None]
+    X = t * np.cos(phi)[None, :]
+    Y = t * np.sin(phi)[None, :]
+    q = X * X + Y * Y - 1.0
+    f = q * q * q - X * X * Y * Y * Y
+    i = np.argmax(f >= 0.0, axis=0)
+    R = t[i, 0]
+    # prolongée d'un tour de chaque côté : np.interp sans couture en 0 / 2π
+    ph = np.concatenate([phi - 2.0 * np.pi, phi, phi + 2.0 * np.pi])
+    rr = np.concatenate([R, R, R])
+    _heart_tab.append((ph, rr, float(R.min())))
+    return _heart_tab[0]
+
+
+def _shape_dist(shape, u, v, hx, hy, sym):
+    """Distance NORMALISÉE d'une forme centrée (1 = la forme couvre le rectangle hx × hy, ou le
+    cercle de la demi-diagonale pour les formes rondes). Pas le linéaire (cf. appelants)."""
+    rd = float(np.hypot(hx, hy))
+    if shape == "box":
+        return np.maximum(np.abs(u) * np.float32(1.0 / hx), np.abs(v) * np.float32(1.0 / hy))
+    if shape == "diamond":
+        return (np.abs(u) * np.float32(0.5 / hx) + np.abs(v) * np.float32(0.5 / hy))
+    r = np.sqrt(u * u + v * v)
+    if shape == "iris":
+        return r * np.float32(1.0 / rd)
+    if shape == "clock":
+        # Balayage angulaire à partir du HAUT, sens horaire (symétrie : les deux sens à la fois).
+        ph = np.arctan2(u, -v)
+        if sym:
+            return np.abs(ph) * np.float32(1.0 / np.pi)
+        return np.mod(ph, np.float32(2.0 * np.pi)) * np.float32(0.5 / np.pi)
+    if shape == "star":
+        ph = np.mod(np.arctan2(u, -v), np.float32(2.0 * np.pi / 5.0))
+        ph = np.minimum(ph, np.float32(2.0 * np.pi / 5.0) - ph)
+        k = _STAR_K; c0 = float(np.cos(np.pi / 5.0)); s0 = float(np.sin(np.pi / 5.0))
+        rho = np.float32(k * s0) / (np.float32(k * s0) * np.cos(ph) + np.float32(1.0 - k * c0) * np.sin(ph))
+        return r * np.float32(k / rd) / rho
+    # heart
+    ph, rr, rmin = _heart_table()
+    phi = np.mod(np.arctan2(-v, u), np.float32(2.0 * np.pi))
+    R = np.interp(phi.ravel(), ph, rr).astype(np.float32).reshape(phi.shape)
+    return r * np.float32(rmin / rd) / R
+
+
+def _shape_px(shape, hx, hy):
+    """Un pixel, en unités de d (douceur minimale : un bord net reste anti-crénelé)."""
+    if shape in ("box", "diamond"):
+        return 1.0 / min(hx, hy)
+    if shape == "clock":
+        return 0.002
+    return 1.0 / float(np.hypot(hx, hy))
+
+
+_wipe_fields = dict()
+_wipe_fields_lock = threading.Lock()
+_WIPE_FIELDS_MAX = 6
+_FIELD_ROWS = 64        # calcul par paquets de lignes : jamais un long calcul d'un seul tenant
+_field_cost_ms = dict()  # forme → durée MESURÉE du dernier calcul de champ (cf. _pattern_maps)
+
+
+def _field_rows(shape, cx, cy, c, s, sym, rep, umin, r0, r1, pattern=False):
+    """Distance normalisée des lignes [r0, r1) (avant recalage du minimum) et un pixel en unités de d.
+    `pattern` (keyer motif) : le linéaire est une BARRE centrée sur le pivot (d = 1 à la demi-étendue)."""
+    u, v = _rot_coords(cx, cy, c, s, r0, r1)
+    hx = WIDTH / 2.0; hy = HEIGHT / 2.0
+    if shape == "linear":
+        lh = hx * abs(c) + hy * abs(s)              # demi-étendue de la projection, image centrée
+        P = 2.0 * lh / rep
+        if sym or pattern:
+            # Porte coulissante : B part de l'axe (pivot = centre) vers les deux bords ; en
+            # répétition, chaque bande s'ouvre depuis son milieu.
+            if rep > 1:
+                # bandes calées sur le cadre quand le centre est au milieu (N pair : demi-période)
+                ph = (P / 2.0) if rep % 2 == 0 else 0.0
+                u = np.mod(u - np.float32(ph) + np.float32(P / 2.0), np.float32(P)) - np.float32(P / 2.0)
+            d = np.abs(u)
+        else:
+            d = u - np.float32(umin)
+            if rep > 1:
+                d = np.mod(d, np.float32(P))        # stores : N bandes balayées ensemble
+        k = (rep if pattern else 1) / lh            # motif : la taille 1 remplit chaque bande
+        return d * np.float32(k), k
+    if rep > 1:
+        # Damier : N × N cellules au format de l'image, grille tournée avec la forme et déplacée
+        # avec le centre ; centre au milieu → cellules calées sur le cadre (N pair : demi-cellule).
+        cw = WIDTH / float(rep); chh = HEIGHT / float(rep)
+        pu_ = (cw / 2.0) if rep % 2 == 0 else 0.0
+        pv_ = (chh / 2.0) if rep % 2 == 0 else 0.0
+        u = np.mod(u - np.float32(pu_) + np.float32(cw / 2.0), np.float32(cw)) - np.float32(cw / 2.0)
+        v = np.mod(v - np.float32(pv_) + np.float32(chh / 2.0), np.float32(chh)) - np.float32(chh / 2.0)
+        hx = cw / 2.0; hy = chh / 2.0
+    return _shape_dist(shape, u, v, hx, hy, sym), _shape_px(shape, hx, hy)
+
+
+def _wipe_field(geom, pattern=False):
+    """(d float32 plein cadre, M, un pixel) d'une géométrie (forme, angle, centre, symétrie,
+    répétition) — mis en cache ; le SENS n'en fait pas partie (cf. _ramp_into), N/R ne recalcule
+    rien. Calcul par paquets de lignes : en tâche de fond, il rend la main entre deux paquets.
+    `pattern` (keyer motif) : distance au centre telle quelle (la TAILLE s'y mesure), pas recalée
+    sur le cadre."""
+    ck = (geom, bool(pattern))
+    with _wipe_fields_lock:
+        got = _wipe_fields.get(ck)
+    if got is not None:
+        return got
+    shape, ang, cx, cy, sym, rep = geom
+    c, s = _rot_cs(ang)
+    cxp = cx * WIDTH; cyp = cy * HEIGHT
+    # minimum de la projection : à un coin (u est affine en x, y)
+    umin = min((x + 0.5 - cxp) * c + (y + 0.5 - cyp) * s for x in (0, WIDTH - 1) for y in (0, HEIGHT - 1))
+    t0 = time.monotonic()
+    d = np.empty((HEIGHT, WIDTH), dtype=np.float32)
+    px = 1.0
+    for r0 in range(0, HEIGHT, _FIELD_ROWS):
+        r1 = min(HEIGHT, r0 + _FIELD_ROWS)
+        blk, px = _field_rows(shape, cxp, cyp, c, s, sym, rep, umin, r0, r1, pattern)
+        d[r0:r1] = blk
+    if not pattern:
+        d -= np.float32(d.min())                # centre hors cadre : la course commence au cadre
+    got = (d, max(float(d.max()), 1e-6), px, (None if pattern else _field_tiles(d)))
+    _field_cost_ms[shape] = (time.monotonic() - t0) * 1000.0
+    with _wipe_fields_lock:
+        if len(_wipe_fields) >= _WIPE_FIELDS_MAX:
+            _wipe_fields.pop(next(iter(_wipe_fields)))
+        _wipe_fields[ck] = got
+    return got
+
+
+_wipe_inflight = set()      # géométries en cours de calcul en tâche de fond (un seul fil par géométrie)
+
+
+def _wipe_prefetch_run(geom):
+    try:
+        _wipe_field(geom)
+    finally:
+        with _wipe_fields_lock:
+            _wipe_inflight.discard(geom)
+
+
+def _wipe_prefetch(w):
+    """Précalcule en tâche de fond la géométrie d'un réglage (appelé quand un réglage de volet
+    change) : le départ du volet trouve son champ prêt au lieu de le calculer dans la trame.
+    0.23.58 : un seul fil par géométrie (un angle tourné vite n'empile plus les calculs)."""
+    geom = _wipe_geom(w)
+    with _wipe_fields_lock:
+        if (geom, False) in _wipe_fields or geom in _wipe_inflight:
+            return
+        _wipe_inflight.add(geom)
+    threading.Thread(target=_wipe_prefetch_run, args=(geom,), daemon=True).start()
+
+
+_TILE_H = 8
+_TILE_W = 64
+# Classe de chaque tuile au dernier remplissage d'un tampon (id du tampon → int8 : 0, 1, 2 = calculée) :
+# une tuile restée 0 ou 1 n'est pas réécrite — le bord ne traverse que quelques tuiles par trame.
+_tile_cls = dict()
+
+
+def _field_tiles(d):
+    """(d vu en tuiles, min, max) par tuile, ou None si l'image ne se découpe pas en tuiles."""
+    if HEIGHT % _TILE_H or WIDTH % _TILE_W:
+        return None
+    d4 = d.reshape(HEIGHT // _TILE_H, _TILE_H, WIDTH // _TILE_W, _TILE_W)
+    return (d4, d4.min(axis=(1, 3)), d4.max(axis=(1, 3)))
+
+
+def _ramp_calc(out, d, k, s, rev):
+    if rev:
+        np.subtract(d, np.float32(k), out=out)
+    else:
+        np.subtract(np.float32(k), d, out=out)
+    np.multiply(out, np.float32(1.0 / s), out=out)
+    np.clip(out, 0.0, 1.0, out=out)
+    return out
+
+
+def _ramp_cls(tmin, tmax, k, s, rev):
+    """Classe de chaque tuile d'une rampe de seuil k, largeur s (cf. _ramp_into) : int8 0 ou 1 = la
+    tuile entière vaut cette constante (classement CONSERVATEUR, marge d'un millième de douceur :
+    le calcul y donnerait exactement la même valeur), 2 = le bord la traverse, à calculer."""
+    g = 1e-3 * s
+    if rev:     # part de B = clip((d − k) / s) : 1 si d ≥ k + s, 0 si d ≤ k
+        one = tmin >= k + s + g
+        zero = tmax <= k - g
+    else:       # part de B = clip((k − d) / s) : 1 si d ≤ k − s, 0 si d ≥ k
+        one = tmax <= k - s - g
+        zero = tmin >= k + g
+    return np.where(one, 1, np.where(zero, 0, 2)).astype(np.int8)
+
+
+def _tile_fill(out, cls, keep):
+    """Remplit les tuiles CONSTANTES (classe 0 ou 1) de `out` ; les tuiles de classe 2 sont laissées
+    à l'appelant. `keep` (tampon PERSISTANT) : seules les tuiles dont la classe a changé depuis le
+    dernier remplissage de CE tampon sont réécrites. Beaucoup de changements (début d'un AUTO : la
+    trame précédente du tampon était la fin du dernier, toute à 1) → une écriture CONTIGUË du cadre
+    entier plutôt qu'une dispersion tuile par tuile (mesuré le 2026-10-29 sur dell-1, 1080p : la
+    dispersion de toutes les tuiles coûte plusieurs millisecondes, l'écriture contiguë moins d'une)."""
+    o4 = out.reshape(HEIGHT // _TILE_H, _TILE_H, WIDTH // _TILE_W, _TILE_W)
+    prev = _tile_cls.get(id(out)) if keep else None
+    if prev is None or prev.shape != cls.shape:
+        o4[...] = (cls == 1).astype(np.float32)[:, None, :, None]
+    else:
+        ch = (cls != prev) & (cls != 2)
+        if 4 * int(np.count_nonzero(ch)) > ch.size:
+            o4[...] = (cls == 1).astype(np.float32)[:, None, :, None]
+        else:
+            ic, jc = np.nonzero((cls != prev) & (cls != 2))
+            if ic.size:
+                o4[ic, :, jc, :] = cls[ic, jc].astype(np.float32)[:, None, None]
+    if keep:
+        _tile_cls[id(out)] = cls
+    else:
+        _tile_cls.pop(id(out), None)
+    return o4
+
+
+def _ramp_k(e, s, M, rev):
+    """Seuil de la rampe de bord e, largeur s (cf. _ramp_into) — REV : mesuré sur M − d."""
+    return (M - e - 0.5 * s) if rev else (e + 0.5 * s)
+
+
+def _ramp_into(out, d, e, s, M, rev, tiles=None, keep=False):
+    """out ← part de B, EN PLACE : rampe de largeur s centrée sur le bord e, 1 côté d < e − s/2,
+    0 côté d > e + s/2. REV : la même sur M − d (le volet part de l'autre bout, une forme se
+    referme), sans toucher au champ en cache. `tiles` (cf. _field_tiles) : seules les tuiles que
+    le bord traverse sont calculées ; `keep` (tampon PERSISTANT, cf. _wipe_buf) : les tuiles restées
+    à 0 ou 1 depuis son dernier remplissage ne sont pas réécrites. Jamais sur un tampon neuf : son
+    id peut être celui d'un tableau libéré."""
+    k = _ramp_k(e, s, M, rev)
+    if tiles is None:
+        _tile_cls.pop(id(out), None)
+        return _ramp_calc(out, d, k, s, rev)
+    d4, tmin, tmax = tiles
+    cls = _ramp_cls(tmin, tmax, k, s, rev)
+    o4 = _tile_fill(out, cls, keep)
+    ia, ja = np.nonzero(cls == 2)
+    if ia.size:
+        sub = d4[ia, :, ja, :]
+        o4[ia, :, ja, :] = _ramp_calc(sub, sub, k, s, rev)
+    return out
+
+
+_wipe_bufs = dict()
+
+
+def _wipe_buf(owner, slot):
+    if owner is None:
+        return np.empty((HEIGHT, WIDTH), dtype=np.float32)
+    key = (owner, slot)
+    b = _wipe_bufs.get(key)
+    if b is None:
+        b = _wipe_bufs[key] = [0, np.empty((HEIGHT, WIDTH), dtype=np.float32),
+                               np.empty((HEIGHT, WIDTH), dtype=np.float32)]
+    b[0] ^= 1
+    return b[1 + b[0]]
+
+
 def _on_air(snap, private=False):
     """(fill, key) à l'antenne pour l'instantané `snap` de frames (pris sous verrou). `private` :
     calcul dans des tampons À SOI — sinon un appel hors du thread de sortie écrirait dans les
@@ -445,6 +870,16 @@ def _on_air(snap, private=False):
     if not fd:
         return snap["fill"], snap["key"]
     w = _fade_weight(fd)
+    if fd.get("ends"):
+        m = _wipe_mask(fd["wipe"], w, None if private else "onair") if fd.get("wipe") else None
+        outs = []
+        for e, add in ((fd["f"], fd.get("additive")), (fd["k"], False)):
+            if e is None:
+                outs.append(snap["key"]); continue
+            buf = np.empty(V_FRAME_SIZE // _BPS, _NP_DT) if private else e[2]
+            _mix_ends([(e[0], e[1], _planes(buf), add)], w, m, 0, HEIGHT)
+            outs.append(buf.view(np.uint8))
+        return outs[0], outs[1]
     own = (lambda pr: (pr[0], pr[1], np.empty_like(pr[2]))) if private else (lambda pr: pr)
     f = _mix_prepped(own(fd["f"]), w)
     k = snap["key"] if fd["k"] is None else _mix_prepped(own(fd["k"]), w)
@@ -463,10 +898,23 @@ def _set_image(fill_bytes, key_bytes, fade_ms, rgba=None, meta=None):
         # Un fondu interrompu repart de ce qui est À L'ANTENNE maintenant, pas de son départ.
         cur_f, cur_k = _on_air(snap, private=True)
         cur_f, cur_k = bytes(cur_f), bytes(cur_k)
-        fade = {{"f": _prep_fade(cur_f, fill_bytes),
-                 # clé identique (images opaques : cas courant) → on ne mélange que le remplissage
-                 "k": None if cur_k == key_bytes else _prep_fade(cur_k, key_bytes),
-                 "n": n, "i": 0}}
+        with state_lock:
+            tr = dict(state["transition"])
+        wipe = _wipe_norm_s(tr.get("wipe")) if tr.get("type") == "wipe" else None
+        additive = tr.get("type") == "additive"
+        if wipe is not None and not _field_ready(wipe):
+            log("stills: wipe field not ready — this transition is a dissolve", "warning")
+            wipe = None
+        if _MVK or wipe is not None or additive:
+            # (ancienne, nouvelle, tampon de sortie de _on_air) en plans : rien à préparer.
+            ends = lambda old, new: (_planes(old), _planes(new), np.empty(V_FRAME_SIZE // _BPS, _NP_DT))
+            fade = {{"ends": True, "wipe": wipe, "additive": additive, "n": n, "i": 0, "f": ends(cur_f, fill_bytes),
+                     # clé identique (images opaques : cas courant) → on ne mélange que le remplissage
+                     "k": None if cur_k == key_bytes else ends(cur_k, key_bytes)}}
+        else:
+            fade = {{"f": _prep_fade(cur_f, fill_bytes),
+                     "k": None if cur_k == key_bytes else _prep_fade(cur_k, key_bytes),
+                     "n": n, "i": 0}}
     with frames_lock:
         frames["fade"] = fade
         frames["fill"] = fill_bytes; frames["key"] = key_bytes
@@ -821,22 +1269,30 @@ def _feed(inst, opened):
             gidx, gi_f, view_f = fill_w.open_grain(index=idx)
             _, gi_k, view_k = key_w.open_grain(index=idx if idx is not None else gidx)
             _held(view_f, None, False)
-            pairs = [(fd["f"], view_f.view(_NP_DT))]
+            if fd.get("ends"):
+                # Noyau C : de l'ancienne et de la nouvelle image vers le grain, en une passe.
+                m = _wipe_mask(fd["wipe"], w, "feed") if fd.get("wipe") else None
+                pairs = [(fd["f"][0], fd["f"][1], _planes(view_f), fd.get("additive"))]
+                mix = lambda a, b: _mix_ends(pairs, w, m, a, b)
+            else:
+                pairs = [(fd["f"], view_f.view(_NP_DT))]
+                mix = lambda a, b: _mix_rows(pairs, w, a, b)
             if fd["k"] is None:
                 if not _held(view_k, snap["key"], True):
                     bobimxl.blit(view_k, np.frombuffer(snap["key"], dtype=np.uint8))
             else:
                 _held(view_k, None, False)
-                pairs.append((fd["k"], view_k.view(_NP_DT)))
+                pairs.append((fd["k"][0], fd["k"][1], _planes(view_k)) if fd.get("ends")
+                             else (fd["k"], view_k.view(_NP_DT)))
             if V_SLICE_H:
                 step = V_SLICE_H * -(-_V_TOTAL_SLICES // 3)
                 for r1 in range(step, HEIGHT, step):
-                    _mix_rows(pairs, w, r1 - step, r1)
+                    mix(r1 - step, r1)
                     for w_, gi_ in ((fill_w, gi_f), (key_w, gi_k)):
                         w_.commit(gi_, valid_slices=r1 // V_SLICE_H)
-                _mix_rows(pairs, w, (HEIGHT - 1) // step * step, HEIGHT)
+                mix((HEIGHT - 1) // step * step, HEIGHT)
             else:
-                _mix_rows(pairs, w, 0, HEIGHT)
+                mix(0, HEIGHT)
             fill_w.commit(gi_f)
             key_w.commit(gi_k)
         elif V_SLICE_H:
@@ -946,6 +1402,13 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "program_file": s.get("file", ""),      # image À L'ANTENNE
                        "preview_file": (s.get("preview") or {{}}).get("file", ""),   # image en PREVIEW
                        "default_file": (s.get("default") or {{}}).get("file", ""),   # image par défaut
+                       "transition_type": (s.get("transition") or {{}}).get("type", "dissolve"),
+                       "wipe_direction": ((s.get("transition") or {{}}).get("wipe") or {{}}).get("direction", "linear"),
+                       "wipe_angle": ((s.get("transition") or {{}}).get("wipe") or {{}}).get("angle", 0.0),
+                       "wipe_softness": ((s.get("transition") or {{}}).get("wipe") or {{}}).get("softness", 0.10),
+                       "wipe_reverse": bool(((s.get("transition") or {{}}).get("wipe") or {{}}).get("reverse")),
+                       "wipe_shapes": list(WIPE_SHAPES),
+                       "mvk": _MVK,
                        "aux_count": AUX_N,
                        "aux_shm": [f for f, _k in AUX_SHM],
                        "aux_gen": [a["gen"] for a in aux],
@@ -959,7 +1422,9 @@ class ControlHandler(BaseHTTPRequestHandler):
         elif u.path == "/persisted":
             # Persistence snapshot (`control.persist`): exactly what goes into params.stills_state.
             with state_lock:
-                d = {{"default": dict(state["default"]), "aux": [dict(x) for x in state["aux"]]}}
+                d = {{"default": dict(state["default"]), "aux": [dict(x) for x in state["aux"]],
+                      "transition": {{"ms": state["transition_ms"], "type": state["transition"]["type"],
+                                      "wipe": dict(state["transition"]["wipe"])}}}}
             self._json(200, d)
         elif u.path == "/aux.jpg":
             try:
@@ -1069,15 +1534,37 @@ class ControlHandler(BaseHTTPRequestHandler):
             with state_lock: state["take_direct"] = v
             self._json(200, {{"ok": True, "take_direct": v}})
         elif u.path == "/transition":
-            # Durée de fondu PAR DÉFAUT, à chaud (0 = coupe franche). Le réglage persistant est
-            # `transition_ms` du config_schema.
+            # Transition À CHAUD : durée (`ms`, 0 = coupe franche), type (dissolve | additive |
+            # wipe) et réglage du volet (direction = forme, angle, softness, reverse) — persistés
+            # par l'orchestrateur (control.persist). Champ absent = inchangé.
             b = self._read()
-            try:
-                v = max(0.0, min(10000.0, float(b.get("ms", b.get("transition_ms", 0)) or 0)))
-            except (TypeError, ValueError):
-                return self._json(400, {{"error": "ms : nombre attendu"}})
-            with state_lock: state["transition_ms"] = v
-            self._json(200, {{"ok": True, "transition_ms": v}})
+            with state_lock:
+                tr = {{"type": state["transition"]["type"], "wipe": dict(state["transition"]["wipe"])}}
+                ms = state["transition_ms"]
+            if "ms" in b or "transition_ms" in b:
+                try:
+                    ms = max(0.0, min(10000.0, float(b.get("ms", b.get("transition_ms", 0)) or 0)))
+                except (TypeError, ValueError):
+                    return self._json(400, {{"error": "ms : nombre attendu"}})
+            t = b.get("type")
+            if t not in (None, ""):
+                if t not in TRANSITION_TYPES:
+                    return self._json(400, {{"error": "type : %s attendu" % " | ".join(TRANSITION_TYPES)}})
+                tr["type"] = t
+            raw = dict(tr["wipe"])
+            raw.update(b.get("wipe") if isinstance(b.get("wipe"), dict) else {{}})
+            for k in ("direction", "angle", "softness", "reverse"):
+                if k in b:
+                    raw[k] = b[k]
+            if "direction" in raw and str(raw["direction"]).strip().lower() not in WIPE_NAMES:
+                return self._json(400, {{"error": "direction : %s attendu" % " | ".join(WIPE_NAMES)}})
+            tr["wipe"] = _wipe_norm_s(raw)
+            with state_lock:
+                state["transition_ms"] = ms
+                state["transition"] = tr
+            if tr["type"] == "wipe":
+                _wipe_prefetch(tr["wipe"])          # le champ se prépare pendant qu'on règle
+            self._json(200, {{"ok": True, "transition_ms": ms, "type": tr["type"], "wipe": tr["wipe"]}})
         elif u.path == "/log_level":
             # Verbosité À CHAUD (pas de redéploiement) : instruction d'incident. Le niveau
             # PERSISTANT reste le champ `log_level` du config_schema ; celui-ci est volatil.
@@ -1245,6 +1732,20 @@ def _supervised(fn):
     threading.Thread(target=_run, name=fn.__name__, daemon=True).start()
 
 _supervised(feeder)
+
+# Transition persistée : type, réglage du volet, durée. Le champ du volet est préparé tout de suite
+# (tâche de fond) : le premier TAKE en volet n'attend pas.
+with state_lock:
+    _tr0 = state["transition"]
+    if _tr0.get("ms") not in (None, ""):
+        try:
+            state["transition_ms"] = max(0.0, min(10000.0, float(_tr0["ms"])))
+        except (TypeError, ValueError):
+            pass
+    state["transition"] = {{"type": _tr0.get("type") if _tr0.get("type") in TRANSITION_TYPES else "dissolve",
+                            "wipe": _wipe_norm_s(_tr0.get("wipe"))}}
+    if state["transition"]["type"] == "wipe":
+        _wipe_prefetch(state["transition"]["wipe"])
 
 # AUX : chaque sortie reprend l'image qu'elle portait (persistée).
 for _i in range(AUX_N):

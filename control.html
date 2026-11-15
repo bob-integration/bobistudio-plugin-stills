@@ -49,13 +49,36 @@
     <span class="stl-sp"></span>
     <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
     <details class="stl-pop">
-      <summary data-i18n="plugin.stills.framing_menu">Cadrage et fondu</summary>
+      <summary data-i18n="plugin.stills.framing_menu2">Cadrage</summary>
       <div class="stl-pop-body stl-fit">
         <label><input type="radio" name="stl-fit" value="native" checked> <span data-i18n="plugin.stills.fit_native">Pixel à pixel</span></label>
         <label><input type="radio" name="stl-fit" value="fit"> <span data-i18n="plugin.stills.fit_fit">Au plus grand</span></label>
         <label><input type="radio" name="stl-fit" value="stretch"> <span data-i18n="plugin.stills.fit_stretch">Plein cadre</span></label>
         <button type="button" class="stl-pos-open" data-i18n="plugin.stills.pos_size_open">Position et taille…</button>
-        <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée du fondu au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.fade">Fondu (ms)</span> <input type="number" class="stl-fade" value="150" step="50" min="0" max="10000"></label>
+      </div>
+    </details>
+    <details class="stl-pop">
+      <summary><span data-i18n="plugin.stills.transition_menu">Transition</span> <strong class="stl-tr-sum"></strong></summary>
+      <div class="stl-pop-body stl-tr">
+        <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée de la transition au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.duration_ms">Durée (ms)</span> <input type="number" class="stl-fade" value="150" step="50" min="0" max="10000"></label>
+        <label><input type="radio" name="stl-trtype" value="dissolve" checked> <span data-i18n="plugin.stills.tr_dissolve">Fondu</span></label>
+        <label><input type="radio" name="stl-trtype" value="additive"> <span data-i18n="plugin.stills.tr_additive">Fondu additif</span></label>
+        <label><input type="radio" name="stl-trtype" value="wipe"> <span data-i18n="plugin.stills.tr_wipe">Volet</span></label>
+        <div class="stl-wipe-opts" hidden>
+          <label><span data-i18n="plugin.stills.wipe_shape">Forme</span>
+            <select class="stl-wshape">
+              <option value="linear" data-i18n="plugin.stills.ws_linear">Linéaire</option>
+              <option value="iris" data-i18n="plugin.stills.ws_iris">Iris</option>
+              <option value="box" data-i18n="plugin.stills.ws_box">Boîte</option>
+              <option value="diamond" data-i18n="plugin.stills.ws_diamond">Losange</option>
+              <option value="star" data-i18n="plugin.stills.ws_star">Étoile</option>
+              <option value="heart" data-i18n="plugin.stills.ws_heart">Cœur</option>
+              <option value="clock" data-i18n="plugin.stills.ws_clock">Horloge</option>
+            </select></label>
+          <label><span data-i18n="plugin.stills.wipe_angle">Angle (°)</span> <input type="number" class="stl-wangle" value="0" step="15" min="0" max="360"></label>
+          <label><span data-i18n="plugin.stills.wipe_soft">Douceur (%)</span> <input type="number" class="stl-wsoft" value="10" step="5" min="0" max="100"></label>
+          <label><input type="checkbox" class="stl-wrev"> <span data-i18n="plugin.stills.wipe_reverse">Sens inverse</span></label>
+        </div>
       </div>
     </details>
     <details class="stl-pop">
@@ -92,20 +115,22 @@
     </div>
     <div class="stl-lib-host"></div>
     <input type="file" class="stl-gimport" accept=".json,application/json" hidden>
-    <dialog class="stl-posdlg" data-i18n-aria="plugin.stills.pos_size" aria-label="Position et taille">
+    <dialog class="stl-posdlg modal-card" aria-labelledby="stl-posdlg-t">
       <form method="dialog" class="stl-adv">
+        <h3 id="stl-posdlg-t" data-i18n="plugin.stills.pos_size">Position et taille</h3>
         <label><span data-i18n="plugin.stills.x_pct">X (% du cadre)</span> <input type="number" class="stl-x" value="0" step="1"></label>
         <label><span data-i18n="plugin.stills.y_pct">Y (% du cadre)</span> <input type="number" class="stl-y" value="0" step="1"></label>
         <label><span data-i18n="plugin.stills.size_pct">Taille (%)</span> <input type="number" class="stl-size" value="100" step="1" min="1"></label>
-        <menu><button type="submit" value="close" data-i18n="plugin.stills.close">Fermer</button></menu>
+        <menu><button type="submit" class="stl-dlg-ok" value="close" data-i18n="plugin.stills.close">Fermer</button></menu>
       </form>
     </dialog>
-    <dialog class="stl-gdlg">
+    <dialog class="stl-gdlg modal-card" aria-labelledby="stl-gdlg-t">
       <form method="dialog" class="stl-gdlg-form">
-        <label><span class="stl-gdlg-title"></span> <input class="stl-gdlg-name" maxlength="120" required autocomplete="off"></label>
+        <h3 class="stl-gdlg-title" id="stl-gdlg-t"></h3>
+        <input class="stl-gdlg-name" maxlength="120" required autocomplete="off" aria-labelledby="stl-gdlg-t">
         <menu>
           <button type="button" class="stl-gdlg-cancel" data-i18n="plugin.stills.cancel">Annuler</button>
-          <button type="submit" value="ok" data-i18n="plugin.stills.ok">OK</button>
+          <button type="submit" class="stl-dlg-ok" value="ok" data-i18n="plugin.stills.ok">OK</button>
         </menu>
       </form>
     </dialog>

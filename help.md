@@ -27,7 +27,7 @@ Dans la bibliothèque (base des médias : bins, recherche, serveurs réseau, fic
 
 Une grille est une fiche de la base des médias, comme une playlist : elle se range dans les bins et les projets, se partage, s'exporte et s'importe. Chacun ouvre les siennes sur le panneau, en onglets (**Grilles ▾**) : pour une émission, préparez une grille par thème et passez de l'une à l'autre. Les onglets ouverts vous suivent d'un poste à l'autre.
 
-**Préparer** : glissez des images de la bibliothèque sur les cases (plusieurs à la fois remplissent les cases vides), glissez une case sur une autre pour les échanger. Au doigt : choisissez l'image dans la bibliothèque, puis touchez la case. Le menu d'une case règle son cadrage (celui réglé dans le menu Cadrage et fondu), son nom, ou la vide. Colonnes et rangées se choisissent en haut. L'antenne n'est pas touchée pendant la préparation, et tout est enregistré au fil des gestes.
+**Préparer** : glissez des images de la bibliothèque sur les cases (plusieurs à la fois remplissent les cases vides), glissez une case sur une autre pour les échanger. Au doigt : choisissez l'image dans la bibliothèque, puis touchez la case. Le menu d'une case règle son cadrage (celui réglé dans le menu Cadrage), son nom, ou la vide. Colonnes et rangées se choisissent en haut. L'antenne n'est pas touchée pendant la préparation, et tout est enregistré au fil des gestes.
 
 ## Sorties AUX
 
@@ -70,11 +70,18 @@ Menu d'une image → **Éditer…** : recadrage, fond (dont l'image floutée), z
 | Au plus grand | Agrandie sans déformer (bandes transparentes) |
 | Plein cadre | Étirée pour remplir (peut déformer) |
 
-Le cadrage se règle dans le menu **Cadrage et fondu**, en haut ; **Position et taille…** y ouvre le réglage X/Y/Taille en % du cadre (indépendant de la résolution).
+Le cadrage se règle dans le menu **Cadrage**, en haut ; **Position et taille…** y ouvre le réglage X/Y/Taille en % du cadre (indépendant de la résolution).
 
-## Fondu
+## Transition
 
-Le réglage **Fondu (ms)**, dans le menu **Cadrage et fondu**, donne la durée du fondu enchaîné au changement d'image : 150 ms par défaut, 0 = coupe franche. Repositionner la même image reste une coupe.
+Le menu **Transition**, en haut, règle ce qui se passe au changement d'image (TAKE, image par défaut, choix en Take direct) :
+
+- **Durée (ms)** : 150 ms par défaut, 0 = coupe franche. Repositionner la même image reste une coupe.
+- **Fondu** : enchaîné classique.
+- **Fondu additif** : comme au mélangeur, les deux luminances s'additionnent à mi-course (écrêtées), la couleur reste un fondu ; la découpe (Key) reste un fondu.
+- **Volet** : les formes du mélangeur — linéaire, iris, boîte, losange, étoile, cœur, horloge — avec l'angle, la douceur du bord et le sens inverse.
+
+Fondu, additif et volet passent par le noyau de calcul du mélangeur (une passe par image, sur plusieurs cœurs) : environ 1 ms par image pour un fondu en 1080p 10 bits, 4 à 6 ms pour un volet. Les réglages sont enregistrés avec le conteneur et pilotables par macro.
 
 ## Macros
 

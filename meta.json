@@ -1,7 +1,13 @@
 {
-  "version": "0.19.17",
+  "version": "0.19.18",
   "date": "2026-11-15",
   "changes": {
+    "Transitions par le noyau du mélangeur : fondu, additif, volets (0.19.18)": [
+      "Le fondu passe par le noyau C du mélangeur (déjà dans l'image d'exécution) : une passe par image, depuis l'ancienne et la nouvelle image telles quelles, sur plusieurs cœurs et hors du verrou de Python. Mesuré en 1080p 10 bits : 1,3 ms par image au lieu de 6,5 ms, et plus aucune préparation au départ (4 ms et 33 Mo de tableaux flottants au moment du TAKE). Sans le noyau (image ancienne), l'ancien calcul reste en place.",
+      "Nouveau : fondu additif (comme au mélangeur) et volets, avec les formes du mélangeur (linéaire, iris, boîte, losange, étoile, cœur, horloge), l'angle, la douceur du bord et le sens inverse — même champ de distance et même rampe par tuiles. 4 à 6 ms par image en 1080p 10 bits.",
+      "Menus : « Cadrage » (cadrage, Position et taille…) et « Transition » (durée, type, réglage du volet). Réglages enregistrés avec le conteneur ; action de macro « Transition » et arbre de paramètres étendus.",
+      "Les fenêtres « Nom de la grille » et « Position et taille » prennent le style des fenêtres du produit (thème, titre, fond assombri) au lieu de la fenêtre brute du navigateur."
+    ],
     "Réglages en menus, fondu à 150 ms, retard de publication mesuré (0.19.17)": [
       "Fondus plus réguliers au départ : au TAKE, l'image qui quitte l'antenne passe en preview TELLE QUELLE au lieu d'être recalculée (décodage et mise à l'échelle) au moment même où le fondu démarre — ce calcul retardait la publication des premières images du fondu. Pendant un fondu, l'interface ne redemande plus la vignette de preview au conteneur.",
       "Cadrage, fondu et position quittent le bas de la page : menu « Cadrage et fondu » à côté d'« Image par défaut », et « Position et taille… » ouvre une fenêtre. La bibliothèque est désormais tout en bas : la faire défiler ne fait plus sauter la page.",

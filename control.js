@@ -225,6 +225,19 @@ window.MXLPlugins["stills"] = {
         }
         const dc = $('.stl-direct'); if(dc && dc !== document.activeElement) dc.checked = !!s.take_direct; syncMode();
         const fe = $('.stl-fade'); if(fe && fe !== document.activeElement) fe.value = Math.round(s.transition_ms || 0);
+        { const tt = s.transition_type || 'dissolve', box = $('.stl-tr');
+          if(!box.contains(document.activeElement)){
+            const r = el.querySelector(`input[name="stl-trtype"][value="${tt}"]`); if(r) r.checked = true;
+            $('.stl-wshape').value = s.wipe_direction || 'linear';
+            $('.stl-wangle').value = Math.round(s.wipe_angle || 0);
+            $('.stl-wsoft').value = Math.round((s.wipe_softness ?? 0.1) * 100);
+            $('.stl-wrev').checked = !!s.wipe_reverse;
+          }
+          $('.stl-wipe-opts').hidden = tt !== 'wipe';
+          const nm = {dissolve:T('plugin.stills.tr_dissolve','Fondu'), additive:T('plugin.stills.tr_additive','Fondu additif'),
+                      wipe:T('plugin.stills.tr_wipe','Volet')}[tt] || tt;
+          $('.stl-tr-sum').textContent = (s.transition_ms ? nm + ' ' + Math.round(s.transition_ms) + ' ms' : T('plugin.stills.tr_cut','Coupe'));
+        }
         const kv = $('.stl-viewkey').checked ? 'key' : 'fill', base = `/api/containers/${vmid}/plugin`;
         const pm = s.preview_meta, gm = s.program_meta;
         // Preview. PENDANT UN FONDU, sa vignette n'est pas redemandée : l'encoder (JPEG d'une image
@@ -622,7 +635,16 @@ window.MXLPlugins["stills"] = {
     // Durée de fondu par défaut, à chaud. Elle ne s'applique qu'aux CHANGEMENTS d'image : régler
     // la position reste une coupe (règle côté conteneur).
     const fadeEl = $('.stl-fade');
-    if(fadeEl) fadeEl.onchange = () => api('/transition', {ms: Math.max(0, Math.min(10000, parseFloat(fadeEl.value) || 0))});
+    // Transition (0.19.18) : durée, type (fondu, additif, volet) et réglage du volet — les formes du
+    // mélangeur. Tout part sur /transition (persisté par l'orchestrateur).
+    const trType = () => { const r = el.querySelector('input[name="stl-trtype"]:checked'); return r ? r.value : 'dissolve'; };
+    const sendTransition = () => api('/transition', {
+      ms: Math.max(0, Math.min(10000, parseFloat(fadeEl.value) || 0)), type: trType(),
+      direction: $('.stl-wshape').value, angle: parseFloat($('.stl-wangle').value) || 0,
+      softness: Math.max(0, Math.min(100, parseFloat($('.stl-wsoft').value) || 0)) / 100,
+      reverse: $('.stl-wrev').checked}).then(() => refresh());
+    [fadeEl, $('.stl-wshape'), $('.stl-wangle'), $('.stl-wsoft'), $('.stl-wrev'),
+     ...el.querySelectorAll('input[name="stl-trtype"]')].forEach(x => x && (x.onchange = sendTransition));
     el.querySelectorAll('input[name="stl-fit"]').forEach(r => r.onchange = choose);
     ['.stl-x','.stl-y','.stl-size'].forEach(s => { const e = $(s); if(e) e.onchange = choose; });
 
