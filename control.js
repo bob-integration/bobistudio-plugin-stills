@@ -23,8 +23,8 @@ window.MXLPlugins["stills"] = {
     }
 
     const _pb = el.querySelector('.stl-project-banner'), _npb = el.querySelector('.stl-noproject-banner');
-    if (inst.project) { if (_pb) { _pb.style.display=''; _pb.querySelector('.stl-project-name').textContent=inst.project.name; } }
-    else { if (_npb) _npb.style.display=''; }
+    if (inst.project) { if (_pb) { _pb.hidden = false; _pb.querySelector('.stl-project-name').textContent=inst.project.name; } }
+    else { if (_npb) _npb.hidden = false; }
 
     const api = (path, body) => fetch(`/api/containers/${vmid}/plugin${path}`, {
       method: body===undefined ? 'GET' : 'POST',

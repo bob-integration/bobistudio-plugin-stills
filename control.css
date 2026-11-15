@@ -61,7 +61,7 @@
    la poignée verticale (--stl-side-w, posée par le script) ; par défaut un tiers de la largeur. */
 .stl-ctl.is-pgm-right { display:grid; grid-template-columns:minmax(0,1fr) 14px var(--stl-side-w, clamp(260px, 34%, 480px));
     grid-template-rows:auto auto 1fr; column-gap:4px; row-gap:10px; align-items:start; }
-.stl-ctl.is-pgm-right > .stl-project-banner, .stl-ctl.is-pgm-right > .stl-noproject-banner { grid-column:1 / -1; grid-row:1; }
+.stl-ctl.is-pgm-right > .stl-pp-opts { grid-column:1 / -1; grid-row:1; }
 .stl-ctl.is-pgm-right > .stl-browse { grid-column:1; grid-row:2 / span 2; min-width:0; }
 .stl-ctl.is-pgm-right > .stl-side { grid-column:3; grid-row:2; }
 .stl-ctl.is-pgm-right > .stl-side-grip { grid-column:2; grid-row:2 / span 2; align-self:stretch; display:flex;
@@ -124,6 +124,10 @@
 /* Ligne d'options : vue + outils de grille à gauche, Take direct et deux menus déroulants à droite. */
 .stl-pp-opts { flex-wrap:wrap; align-items:center; gap:6px; }
 .stl-pp-opts .stl-sp { flex:1 1 8px; }
+/* Project storage, centred between the two groups; shortened rather than wrapped. */
+.stl-store { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-size:0.82em; color:var(--text-muted); }
+.stl-store [hidden] { display:none; }
 .stl-pop { position:relative; }
 .stl-pop > summary { list-style:none; cursor:pointer; padding:6px 10px; border:1px solid var(--border-soft); border-radius:var(--radius-small, 4px);
     background:var(--bg-panel); white-space:nowrap; }

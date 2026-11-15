@@ -1,7 +1,10 @@
 {
-  "version": "0.19.22",
+  "version": "0.19.23",
   "date": "2026-11-15",
   "changes": {
+    "Barre de réglages en haut, avec le stockage du projet (0.19.23)": [
+      "La ligne Bibliothèque / Grille, Take direct, Cadrage, Transition, Image par défaut et Affichage passe au-dessus des écrans, et prend la place de la ligne « Stockage ». Le stockage du projet s'affiche au milieu de la barre : une ligne de gagnée pour les écrans et la bibliothèque."
+    ],
     "Sorties AUX côte à côte quand les écrans sont réduits (0.19.22)": [
       "Les AUX se rangent sur le nombre de colonnes qu'il faut pour ne pas dépasser la hauteur des écrans PREVIEW / PROGRAMME : en colonne sous de grands écrans, côte à côte quand la poignée les réduit. Recalculé au redimensionnement de la fenêtre et à chaque mouvement de la poignée."
     ],

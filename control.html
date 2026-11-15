@@ -1,36 +1,7 @@
 <div class="stl-ctl">
-  <div class="stl-project-banner" style="display:none;padding:4px 10px;font-size:0.82em;background:var(--bg-elev);border-bottom:1px solid var(--border);color:var(--text-muted)">
-    <span data-i18n="plugin.stills.storage_prefix">Stockage :</span> <strong class="stl-project-name"></strong>
-  </div>
-  <div class="stl-noproject-banner" style="display:none;padding:4px 10px;font-size:0.82em;background:var(--bg-elev);border-bottom:1px solid var(--border);color:var(--text-muted)">
-    <span data-i18n="plugin.stills.storage_all">Stockage : tous les projets (aucun projet assigné)</span>
-  </div>
-  <!-- Colonne « écrans » : en disposition « PGM seul à droite », elle passe à droite de la bibliothèque. -->
-  <div class="stl-side">
-  <!-- Preview / Programme côte à côte (mode Take) -->
-  <div class="stl-pp">
-    <figure class="stl-pane stl-pane-pv">
-      <figcaption><span class="stl-tag stl-tag-pv" data-i18n="plugin.stills.preview">PREVIEW</span> <span class="stl-pv-info stl-info"></span></figcaption>
-      <div class="stl-screen"><img class="stl-pv-img" alt="" hidden><span class="stl-empty stl-pv-empty" data-i18n="plugin.stills.pv_empty">Aucune image en preview</span></div>
-    </figure>
-    <div class="stl-take-col">
-      <button type="button" class="stl-take" data-i18n="plugin.stills.take" data-i18n-title="plugin.stills.take_tip" title="Preview vers l'antenne, avec le fondu réglé (touche Espace)">TAKE</button>
-      <button type="button" class="stl-cut" data-i18n="plugin.stills.cut" data-i18n-title="plugin.stills.cut_tip" title="Preview vers l'antenne, coupe franche (touche Entrée)">CUT</button>
-    </div>
-    <figure class="stl-pane stl-pane-pg">
-      <figcaption><span class="stl-tag stl-tag-pg" data-i18n="plugin.stills.program">PROGRAMME</span> <span class="stl-pg-info stl-info"></span></figcaption>
-      <div class="stl-screen"><img class="stl-pg-img" alt="" hidden><span class="stl-empty stl-pg-empty" data-i18n="plugin.stills.pg_empty">Rien à l'antenne</span></div>
-    </figure>
-    <!-- Sorties AUX (réglage du conteneur, 0 à 4) : en colonne à DROITE du PGM, petites — elles ne
-         prennent pas de hauteur (2026-11-15). On y glisse une image de la bibliothèque ou une case de
-         grille ; elle y reste, hors PVW / PGM. -->
-    <div class="stl-aux" hidden></div>
-  </div>
-  <div class="stl-pp-grip" role="separator" aria-orientation="horizontal" tabindex="0"
-       data-i18n-aria="plugin.stills.resize_tip" aria-label="Glisser pour redimensionner les écrans PREVIEW / PROGRAMME (double-clic : taille par défaut)"
-       data-i18n-title="plugin.stills.resize_tip" title="Glisser pour redimensionner les écrans PREVIEW / PROGRAMME (double-clic : taille par défaut)"><span></span></div>
-  <!-- UNE ligne sous les écrans (2026-11-15) : la vue (Bibliothèque / Grille) et ses outils, Take
-       direct ; le reste dans deux menus déroulants — la bibliothèque ne descend plus. -->
+  <!-- UNE ligne EN HAUT (2026-11-15) : la vue (Bibliothèque / Grille) et ses outils à gauche, le
+       stockage du projet au milieu, Take direct et les menus à droite — elle remplace la ligne
+       « Stockage » qui prenait une hauteur à elle seule. -->
   <div class="stl-row stl-pp-opts">
       <div class="stl-view" role="tablist" data-i18n-aria="plugin.stills.view_aria" aria-label="Affichage">
         <button type="button" role="tab" class="stl-view-lib" aria-selected="true" data-i18n="plugin.stills.view_lib">Bibliothèque</button>
@@ -46,6 +17,11 @@
         </span>
         <button type="button" class="stl-gmore" data-i18n-aria="plugin.stills.gmore" aria-label="Autres gestes sur la grille">⋯</button>
       </span>
+    <span class="stl-sp"></span>
+    <span class="stl-store">
+      <span class="stl-project-banner" hidden><span data-i18n="plugin.stills.storage_prefix">Stockage :</span> <strong class="stl-project-name"></strong></span>
+      <span class="stl-noproject-banner" hidden data-i18n="plugin.stills.storage_all">Stockage : tous les projets (aucun projet assigné)</span>
+    </span>
     <span class="stl-sp"></span>
     <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
     <details class="stl-pop">
@@ -98,6 +74,30 @@
       </div>
     </details>
   </div>
+  <!-- Colonne « écrans » : en disposition « PGM seul à droite », elle passe à droite de la bibliothèque. -->
+  <div class="stl-side">
+  <!-- Preview / Programme côte à côte (mode Take) -->
+  <div class="stl-pp">
+    <figure class="stl-pane stl-pane-pv">
+      <figcaption><span class="stl-tag stl-tag-pv" data-i18n="plugin.stills.preview">PREVIEW</span> <span class="stl-pv-info stl-info"></span></figcaption>
+      <div class="stl-screen"><img class="stl-pv-img" alt="" hidden><span class="stl-empty stl-pv-empty" data-i18n="plugin.stills.pv_empty">Aucune image en preview</span></div>
+    </figure>
+    <div class="stl-take-col">
+      <button type="button" class="stl-take" data-i18n="plugin.stills.take" data-i18n-title="plugin.stills.take_tip" title="Preview vers l'antenne, avec le fondu réglé (touche Espace)">TAKE</button>
+      <button type="button" class="stl-cut" data-i18n="plugin.stills.cut" data-i18n-title="plugin.stills.cut_tip" title="Preview vers l'antenne, coupe franche (touche Entrée)">CUT</button>
+    </div>
+    <figure class="stl-pane stl-pane-pg">
+      <figcaption><span class="stl-tag stl-tag-pg" data-i18n="plugin.stills.program">PROGRAMME</span> <span class="stl-pg-info stl-info"></span></figcaption>
+      <div class="stl-screen"><img class="stl-pg-img" alt="" hidden><span class="stl-empty stl-pg-empty" data-i18n="plugin.stills.pg_empty">Rien à l'antenne</span></div>
+    </figure>
+    <!-- Sorties AUX (réglage du conteneur, 0 à 4) : en colonne à DROITE du PGM, petites — elles ne
+         prennent pas de hauteur (2026-11-15). On y glisse une image de la bibliothèque ou une case de
+         grille ; elle y reste, hors PVW / PGM. -->
+    <div class="stl-aux" hidden></div>
+  </div>
+  <div class="stl-pp-grip" role="separator" aria-orientation="horizontal" tabindex="0"
+       data-i18n-aria="plugin.stills.resize_tip" aria-label="Glisser pour redimensionner les écrans PREVIEW / PROGRAMME (double-clic : taille par défaut)"
+       data-i18n-title="plugin.stills.resize_tip" title="Glisser pour redimensionner les écrans PREVIEW / PROGRAMME (double-clic : taille par défaut)"><span></span></div>
   </div>
   <div class="stl-side-grip" role="separator" aria-orientation="vertical" tabindex="0"
        data-i18n-aria="plugin.stills.side_resize_tip" aria-label="Glisser pour élargir ou réduire la colonne PROGRAMME (double-clic : largeur par défaut)"
