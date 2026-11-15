@@ -342,6 +342,44 @@ def _rgb_to_yuv420(rgb):
     v_u8 = np.clip(v * _SCALE, 0, _MAXV).astype(_NP_DT)
     return y_u8.tobytes() + u_u8.tobytes() + v_u8.tobytes()
 
+# ─── Noyau C de conversion (libbobi_stills, script_templates/stillskernel.c, 2026-11-15) ─────────
+# Même calcul que _rgb_to_yuv420 / _alpha_to_yuv420 ci-dessus, en une passe et sur plusieurs cœurs :
+# préparer une image 1080p coûtait 89 ms de conversion en numpy. Bibliothèque absente (image
+# d'exécution plus ancienne) : les fonctions numpy restent le chemin, rien ne change.
+import ctypes as _ct
+_SK = None
+try:
+    _ldr = getattr(bobimxl, "charger_noyau", None)
+    if _ldr is not None:
+        _vp, _i = _ct.c_void_p, _ct.c_int
+        _SK = _ldr("stills", {{"bobi_stills_fill_u8": [_vp, _i, _i, _vp, _vp, _vp, _i, _i, _i, _i],
+                               "bobi_stills_fill_u16": [_vp, _i, _i, _vp, _vp, _vp, _i, _i, _i, _i],
+                               "bobi_stills_key_u8": [_vp, _i, _i, _vp, _vp, _i, _i, _i, _i],
+                               "bobi_stills_key_u16": [_vp, _i, _i, _vp, _vp, _i, _i, _i, _i]}})
+        if _SK is not None:
+            _SK.bobi_stills_fill_u8.restype = _SK.bobi_stills_fill_u16.restype = _i
+except Exception as _e:
+    print("stills: kernel unavailable (%s) — numpy conversion" % (_e,), flush=True)
+    _SK = None
+
+
+def _canvas_to_yuv(canvas):
+    """Canvas RGBA uint8 (HEIGHT, WIDTH, 4) → (Fill, Key) en octets planar, prêts pour le bus."""
+    if _SK is not None and canvas.dtype == np.uint8 and canvas.shape == (HEIGHT, WIDTH, 4):
+        rgba = np.ascontiguousarray(canvas)
+        f = np.empty(V_FRAME_SIZE // _BPS, _NP_DT); k = np.empty(V_FRAME_SIZE // _BPS, _NP_DT)
+        n_y = WIDTH * HEIGHT; n_uv = UV_W * UV_H
+        a = f.ctypes.data; isz = f.itemsize
+        fill = _SK.bobi_stills_fill_u16 if _DEEP else _SK.bobi_stills_fill_u8
+        key = _SK.bobi_stills_key_u16 if _DEEP else _SK.bobi_stills_key_u8
+        if fill(rgba.ctypes.data, HEIGHT, WIDTH, a, a + n_y * isz, a + (n_y + n_uv) * isz,
+                _CW, _CH, _SCALE, _MAXV) == 0:
+            key(rgba.ctypes.data, HEIGHT, WIDTH, k.ctypes.data, k.ctypes.data + n_y * isz, n_uv,
+                _SCALE, _MAXV, _NEUTRAL)
+            return f.tobytes(), k.tobytes()
+    return _rgb_to_yuv420(canvas[:, :, :3]), _alpha_to_yuv420(canvas[:, :, 3])
+
+
 def _alpha_to_yuv420(alpha):
     """alpha uint8 (H,W) → key : Y=alpha (matte, mis à l'échelle N bits), U=V=neutre."""
     y = (np.asarray(alpha, dtype=np.uint16) * _SCALE).clip(0, _MAXV).astype(_NP_DT) if _DEEP \
@@ -994,7 +1032,7 @@ def _aux_set(i, fr):
             with aux_lock:
                 aux[i]["error"] = meta
             return False, meta
-        fb, kb = _rgb_to_yuv420(canvas[:, :, :3]), _alpha_to_yuv420(canvas[:, :, 3])
+        fb, kb = _canvas_to_yuv(canvas)
     else:
         canvas, meta, fb, kb = None, None, _black_fill(), _black_key()
     with state_lock:
@@ -1094,7 +1132,7 @@ def _do_preview(file, fit, x, y, size):
     # 2026-11-15 on a DL360, 0.19.17).
     yuv = None
     if canvas is not None:
-        yuv = (_frame_key(file, fit, x, y, size), _rgb_to_yuv420(canvas[:, :, :3]), _alpha_to_yuv420(canvas[:, :, 3]))
+        yuv = (_frame_key(file, fit, x, y, size),) + _canvas_to_yuv(canvas)
     with prev_lock:
         prev["gen"] += 1
         prev["rgba"] = canvas
@@ -1127,8 +1165,7 @@ def _render(file, fit, x, y, size, fade_ms=None):
         if meta == "fichier introuvable":
             _set_image(_black_fill(), _black_key(), fade_ms, None, None)
         return False, meta
-    fill_bytes = _rgb_to_yuv420(canvas[:, :, :3])
-    key_bytes  = _alpha_to_yuv420(canvas[:, :, 3])
+    fill_bytes, key_bytes = _canvas_to_yuv(canvas)
     _set_image(fill_bytes, key_bytes, fade_ms, canvas, meta)
     return True, "ok"
 

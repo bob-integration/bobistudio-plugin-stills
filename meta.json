@@ -1,7 +1,11 @@
 {
-  "version": "0.19.19",
+  "version": "0.19.20",
   "date": "2026-11-15",
   "changes": {
+    "Conversion d'image en C (0.19.20)": [
+      "Préparer une image (RGB → YUV BT.709 plage studio, chrominance moyennée, Key) passe par un noyau C (libbobi_stills, compilé dans l'image d'exécution) : une passe, plusieurs cœurs, hors du verrou de Python. Mesuré en 1080p : 12 à 15 ms au lieu de 105 à 150 ms ; résultat identique octet pour octet en 4:2:2 (à une unité près sur quelques échantillons en 4:2:0).",
+      "Il faut l'image d'exécution qui contient ce noyau. Avec une image plus ancienne, le plugin garde son calcul numpy : rien ne change."
+    ],
     "TAKE sans calcul : l'image est prête dès la preview (0.19.19)": [
       "Au TAKE, le Still recalculait l'image qui partait à l'antenne (décodage du PNG, cadrage, conversion YUV : 155 ms en 1080p) au moment même où la transition démarrait. Une ou deux images sortaient alors avec 18 à 27 ms de retard et la sortie SDI les répétait, à chaque TAKE (mesuré le 2026-11-15 sur un DL360). L'image prête à diffuser est maintenant préparée quand elle passe en preview : le TAKE ne coûte plus que 6 ms. L'image qui quitte l'antenne garde la sienne : un second TAKE pour y revenir est gratuit aussi.",
       "En Take direct, l'image est préparée avant que la transition démarre (environ 0,2 s après le clic en 1080p) : pendant ce temps l'antenne garde une image fixe."

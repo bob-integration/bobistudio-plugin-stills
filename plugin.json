@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.19",
+  "version": "0.19.20",
   "requires": {"core_min": "0.9.9"},
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
