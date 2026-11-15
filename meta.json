@@ -1,7 +1,13 @@
 {
-  "version": "0.19.14",
-  "date": "2026-11-14",
+  "version": "0.19.15",
+  "date": "2026-11-15",
   "changes": {
+    "Corrections de l'essai (0.19.15)": [
+      "« Grilles ▾ » et le menu d'une case s'ouvraient invisibles en vue Grille : ils vivent dans la bibliothèque, qui était masquée. Elle est désormais repliée, pas masquée.",
+      "Le réglage « Sorties AUX » n'apparaissait nulle part : il est dans le panneau ⚙ « Réglages du conteneur ».",
+      "Les nouveaux boutons reprennent le style de ceux du panneau (Stream, TAKE…), au lieu d'un style plus grand, en majuscules.",
+      "Une seule ligne sous les écrans : Bibliothèque / Grille et les outils de la grille y montent, Take direct reste visible ; l'image par défaut et l'affichage (voir la découpe, PGM seul à droite, Stream) passent dans deux menus déroulants. La bibliothèque ne descend plus."
+    ],
     "Sorties AUX (0.19.14)": [
       "Réglage « Sorties AUX » du conteneur, de 0 à 4 : autant de sorties supplémentaires (Fill + Key chacune), hors PVW / PGM. Changer leur nombre redéploie le conteneur.",
       "Chaque sortie garde à l'antenne l'image qu'on y dépose, en permanence, en coupe franche. Les sorties apparaissent en petit dans le panneau : on y glisse une image de la bibliothèque ou une case de grille, « PVW » y met l'image de la preview, ✕ les remet au noir.",

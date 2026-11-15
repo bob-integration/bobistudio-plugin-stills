@@ -126,6 +126,16 @@ window.MXLPlugins["stills"] = {
         ? await window.MediaLibrary.explainMissing(vmid) : null;
       toast(why || (T('plugin.stills.err_prefix','Erreur : ') + d), 'error');
     }
+    // Menus déroulants de la ligne d'options : un seul ouvert à la fois, fermés par un clic ailleurs
+    // ou par Échap ; un geste dans le menu (bouton) le referme.
+    const pops = [...el.querySelectorAll('.stl-pop')];
+    pops.forEach(d => d.addEventListener('toggle', () => { if(d.open) pops.forEach(o => o !== d && (o.open = false)); }));
+    const popClose = e => { if(!el.isConnected) return document.removeEventListener('mousedown', popClose, true);
+      pops.forEach(d => { if(d.open && !d.contains(e.target)) d.open = false; }); };
+    if(this._popClose) document.removeEventListener('mousedown', this._popClose, true);
+    this._popClose = popClose; document.addEventListener('mousedown', popClose, true);
+    el.querySelectorAll('.stl-pop-body').forEach(b => b.addEventListener('click', e => { if(e.target.closest('button')) b.parentElement.open = false; }));
+    el.addEventListener('keydown', e => { if(e.key === 'Escape') pops.forEach(d => d.open = false); });
     const direct = () => !!($('.stl-direct') && $('.stl-direct').checked);
     const params = () => ({
       file: selected, folder: selected.includes('/') ? selected.slice(0, selected.lastIndexOf('/')) : '',
@@ -296,7 +306,7 @@ window.MXLPlugins["stills"] = {
     }
     function renderTabs(){
       const box = $('.stl-gtabs');
-      box.innerHTML = G.open.map(id => `<button type="button" role="tab" class="ctl-push" data-gid="${escH(id)}" aria-selected="${id === G.active}">${escH(G.names[id] || '…')}</button>`).join('');
+      box.innerHTML = G.open.map(id => `<button type="button" role="tab" data-gid="${escH(id)}" aria-selected="${id === G.active}">${escH(G.names[id] || '…')}</button>`).join('');
       box.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => { G.active = b.dataset.gid; saveOpen(); loadGrid(); });
       const g = G.grid, opt = (n, lo, hi) => Array.from({length:hi - lo + 1}, (_, k) => `<option${k + lo === n ? ' selected' : ''}>${k + lo}</option>`).join('');
       $('.stl-gcols').innerHTML = opt(g ? g.cols : 6, 1, 10);
@@ -495,7 +505,9 @@ window.MXLPlugins["stills"] = {
       const grid = v === 'grid';
       $('.stl-view-lib').setAttribute('aria-selected', String(!grid)); $('.stl-view-grid').setAttribute('aria-selected', String(grid));
       gwrap.hidden = !grid; $('.stl-gtabs').hidden = !grid; $('.stl-gtools').hidden = !grid;
-      libHost.hidden = grid && !G.prep;
+      // Repliée, pas masquée : son menu (Grilles ▾, menu d'une case) et sa barre de rapatriement
+      // vivent dans la bibliothèque — masquée, ils s'ouvraient invisibles (signalé le 2026-11-15).
+      libHost.classList.toggle('is-folded', grid && !G.prep);
       browse.classList.toggle('is-prep', grid && G.prep);
       if(grid){ renderTabs(); renderGrid(); }
     }
@@ -531,8 +543,8 @@ window.MXLPlugins["stills"] = {
         auxBox.innerHTML = Array.from({length:n}, (_, i) => `<figure class="stl-aux-out" data-aux="${i + 1}">
             <div class="stl-aux-scr"><img alt="" hidden><span>${escH(T('plugin.stills.aux_drop','Glisser une image ici'))}</span></div>
             <figcaption><strong>AUX ${i + 1}</strong><span></span>
-              <button type="button" class="ctl-push" data-aux-pv title="${escH(T('plugin.stills.aux_from_pv','Mettre l\'image de la preview sur cette sortie'))}">${escH(T('plugin.stills.aux_pv','PVW'))}</button>
-              <button type="button" class="ctl-push" data-aux-clear aria-label="${escH(T('plugin.stills.aux_clear','Vider la sortie (noir)'))}">✕</button>
+              <button type="button" data-aux-pv title="${escH(T('plugin.stills.aux_from_pv','Mettre l\'image de la preview sur cette sortie'))}">${escH(T('plugin.stills.aux_pv','PVW'))}</button>
+              <button type="button" data-aux-clear aria-label="${escH(T('plugin.stills.aux_clear','Vider la sortie (noir)'))}">✕</button>
             </figcaption></figure>`).join('');
       }
       (s.aux || []).forEach((fr, i) => {

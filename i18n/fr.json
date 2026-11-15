@@ -118,5 +118,6 @@
   "plugin.stills.aux_drop": "Glisser une image ici",
   "plugin.stills.aux_from_pv": "Mettre l'image de la preview sur cette sortie",
   "plugin.stills.aux_pv": "PVW",
-  "plugin.stills.aux_clear": "Vider la sortie (noir)"
+  "plugin.stills.aux_clear": "Vider la sortie (noir)",
+  "plugin.stills.display_menu": "Affichage"
 }

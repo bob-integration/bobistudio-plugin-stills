@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.14",
+  "version": "0.19.15",
   "requires": {"core_min": "0.9.9"},
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
@@ -528,7 +528,7 @@
       "key": "aux_outputs",
       "type": "select",
       "label": "Sorties AUX",
-      "help": "Sorties supplémentaires (Fill + Key chacune), hors PVW / PGM : chacune garde à l'antenne l'image qu'on y glisse, en permanence. Elles apparaissent en petit dans le panneau. Changer leur nombre redéploie le conteneur (nouveaux flux).",
+      "help": "Sorties supplémentaires (Fill + Key chacune), hors PVW / PGM : chacune garde à l'antenne l'image qu'on y glisse, en permanence. Elles apparaissent en petit dans le panneau. Réglage du panneau ⚙ « Réglages du conteneur » ; l'appliquer redéploie le conteneur (nouveaux flux).",
       "options": [
         {
           "value": "0",
@@ -552,7 +552,7 @@
         }
       ],
       "default": "0",
-      "scope": "user"
+      "scope": "system"
     },
     {
       "key": "slice_mode",

@@ -28,16 +28,40 @@
   <!-- Sorties AUX (réglage du conteneur, 0 à 4) : en petit, dans le coin. On y glisse une image de
        la bibliothèque ou une case de grille ; elle y reste, hors PVW / PGM. -->
   <div class="stl-aux" hidden></div>
+  <!-- UNE ligne sous les écrans (2026-11-15) : la vue (Bibliothèque / Grille) et ses outils, Take
+       direct ; le reste dans deux menus déroulants — la bibliothèque ne descend plus. -->
   <div class="stl-row stl-pp-opts">
+      <div class="stl-view" role="tablist" data-i18n-aria="plugin.stills.view_aria" aria-label="Affichage">
+        <button type="button" role="tab" class="stl-view-lib" aria-selected="true" data-i18n="plugin.stills.view_lib">Bibliothèque</button>
+        <button type="button" role="tab" class="stl-view-grid" aria-selected="false" data-i18n="plugin.stills.view_grid">Grille</button>
+      </div>
+      <div class="stl-gtabs" role="tablist" data-i18n-aria="plugin.stills.gtabs_aria" aria-label="Grilles ouvertes" hidden></div>
+      <span class="stl-gtools" hidden>
+        <button type="button" class="stl-gopen" data-i18n="plugin.stills.gopen">Grilles ▾</button>
+        <button type="button" class="stl-gprep" aria-pressed="false" data-i18n="plugin.stills.gprep" data-i18n-title="plugin.stills.gprep_tip" title="Glisser des images de la bibliothèque dans les cases, les échanger, régler le cadrage d'une case">Préparer</button>
+        <span class="stl-gsize" hidden>
+          <label><span data-i18n="plugin.stills.gcols">Colonnes</span> <select class="stl-gcols"></select></label>
+          <label><span data-i18n="plugin.stills.grows">Rangées</span> <select class="stl-grows"></select></label>
+        </span>
+        <button type="button" class="stl-gmore" data-i18n-aria="plugin.stills.gmore" aria-label="Autres gestes sur la grille">⋯</button>
+      </span>
+    <span class="stl-sp"></span>
     <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
-    <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
-    <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
-    <span class="stl-default">
-      <span data-i18n="plugin.stills.default_lbl">Image par défaut :</span> <strong class="stl-default-name">—</strong>
-      <button type="button" class="ctl-push stl-default-set" data-i18n="plugin.stills.default_set" data-i18n-title="plugin.stills.default_set_tip" title="L'image en preview, avec son cadrage, devient l'image par défaut">Définir</button>
-      <button type="button" class="ctl-push stl-default-recall" data-i18n="plugin.stills.default_recall" data-i18n-title="plugin.stills.default_recall_tip" title="Met l'image par défaut à l'antenne ; l'image qui y était passe en preview (touche D)">Rappeler</button>
-    </span>
-    <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
+    <details class="stl-pop">
+      <summary><span data-i18n="plugin.stills.default_lbl">Image par défaut :</span> <strong class="stl-default-name">—</strong></summary>
+      <div class="stl-pop-body">
+        <button type="button" class="stl-default-set" data-i18n="plugin.stills.default_set" data-i18n-title="plugin.stills.default_set_tip" title="L'image en preview, avec son cadrage, devient l'image par défaut">Définir</button>
+        <button type="button" class="stl-default-recall" data-i18n="plugin.stills.default_recall" data-i18n-title="plugin.stills.default_recall_tip" title="Met l'image par défaut à l'antenne ; l'image qui y était passe en preview (touche D)">Rappeler</button>
+      </div>
+    </details>
+    <details class="stl-pop">
+      <summary data-i18n="plugin.stills.display_menu">Affichage</summary>
+      <div class="stl-pop-body">
+        <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
+        <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
+        <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
+      </div>
+    </details>
   </div>
   </div>
   <div class="stl-side-grip" role="separator" aria-orientation="vertical" tabindex="0"
@@ -49,22 +73,6 @@
   <!-- Bibliothèque OU grille (2026-11-14) : la grille est une fiche de la base, ouverte par chaque
        utilisateur ; en préparation, la bibliothèque reste visible pour y glisser les images. -->
   <div class="stl-browse">
-    <div class="stl-browse-bar">
-      <div class="stl-view" role="tablist" data-i18n-aria="plugin.stills.view_aria" aria-label="Affichage">
-        <button type="button" role="tab" class="ctl-push stl-view-lib" aria-selected="true" data-i18n="plugin.stills.view_lib">Bibliothèque</button>
-        <button type="button" role="tab" class="ctl-push stl-view-grid" aria-selected="false" data-i18n="plugin.stills.view_grid">Grille</button>
-      </div>
-      <div class="stl-gtabs" role="tablist" data-i18n-aria="plugin.stills.gtabs_aria" aria-label="Grilles ouvertes" hidden></div>
-      <span class="stl-gtools" hidden>
-        <button type="button" class="ctl-push stl-gopen" data-i18n="plugin.stills.gopen">Grilles ▾</button>
-        <button type="button" class="ctl-push stl-gprep" aria-pressed="false" data-i18n="plugin.stills.gprep" data-i18n-title="plugin.stills.gprep_tip" title="Glisser des images de la bibliothèque dans les cases, les échanger, régler le cadrage d'une case">Préparer</button>
-        <span class="stl-gsize" hidden>
-          <label><span data-i18n="plugin.stills.gcols">Colonnes</span> <select class="stl-gcols"></select></label>
-          <label><span data-i18n="plugin.stills.grows">Rangées</span> <select class="stl-grows"></select></label>
-        </span>
-        <button type="button" class="ctl-push stl-gmore" data-i18n-aria="plugin.stills.gmore" aria-label="Autres gestes sur la grille">⋯</button>
-      </span>
-    </div>
     <div class="stl-grid-wrap" hidden>
       <p class="stl-gempty" data-i18n="plugin.stills.gempty">Aucune grille ouverte : « Grilles ▾ » pour en ouvrir une ou en créer une.</p>
       <p class="stl-ghint" hidden data-i18n="plugin.stills.ghint">Préparation : glissez des images de la bibliothèque sur les cases (plusieurs à la fois : elles remplissent les cases vides), glissez une case sur une autre pour les échanger, touchez une case pour son menu. L'antenne n'est pas touchée.</p>
@@ -76,8 +84,8 @@
       <form method="dialog" class="stl-gdlg-form">
         <label><span class="stl-gdlg-title"></span> <input class="stl-gdlg-name" maxlength="120" required autocomplete="off"></label>
         <menu>
-          <button type="button" class="ctl-push stl-gdlg-cancel" data-i18n="plugin.stills.cancel">Annuler</button>
-          <button type="submit" class="ctl-push" value="ok" data-i18n="plugin.stills.ok">OK</button>
+          <button type="button" class="stl-gdlg-cancel" data-i18n="plugin.stills.cancel">Annuler</button>
+          <button type="submit" value="ok" data-i18n="plugin.stills.ok">OK</button>
         </menu>
       </form>
     </dialog>

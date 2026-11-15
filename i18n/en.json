@@ -118,5 +118,6 @@
   "plugin.stills.aux_drop": "Drop an image here",
   "plugin.stills.aux_from_pv": "Put the preview image on this output",
   "plugin.stills.aux_pv": "PVW",
-  "plugin.stills.aux_clear": "Clear the output (black)"
+  "plugin.stills.aux_clear": "Clear the output (black)",
+  "plugin.stills.display_menu": "Display"
 }

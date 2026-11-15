@@ -23,7 +23,7 @@ Dans la bibliothèque (base des médias : bins, recherche, serveurs réseau, fic
 
 ## Grilles (façon sampleur)
 
-**Grille**, à côté de **Bibliothèque**, remplace la liste par des cases figées qui remplissent l'écran, sans défiler. Un clic sur une case met son image en preview, avec le cadrage de la case ; TAKE l'envoie à l'antenne. En Take direct, elle part aussitôt. Les cases en preview et à l'antenne sont marquées.
+**Grille**, à côté de **Bibliothèque** dans la ligne sous les écrans, remplace la liste par des cases figées qui remplissent l'écran, sans défiler. Un clic sur une case met son image en preview, avec le cadrage de la case ; TAKE l'envoie à l'antenne. En Take direct, elle part aussitôt. Les cases en preview et à l'antenne sont marquées.
 
 Une grille est une fiche de la base des médias, comme une playlist : elle se range dans les bins et les projets, se partage, s'exporte et s'importe. Chacun ouvre les siennes sur le panneau, en onglets (**Grilles ▾**) : pour une émission, préparez une grille par thème et passez de l'une à l'autre. Les onglets ouverts vous suivent d'un poste à l'autre.
 
@@ -31,7 +31,7 @@ Une grille est une fiche de la base des médias, comme une playlist : elle se ra
 
 ## Sorties AUX
 
-Dans les réglages du conteneur, **Sorties AUX** ajoute de 1 à 4 sorties supplémentaires (Fill + Key chacune, flux `<nom>_aux1`, `<nom>_aux1_key`…), hors PVW / PGM. Changer leur nombre redéploie le conteneur.
+Dans le panneau ⚙ **Réglages du conteneur** (en haut à droite de la page), **Sorties AUX** ajoute de 1 à 4 sorties supplémentaires (Fill + Key chacune, flux `<nom>_aux1`, `<nom>_aux1_key`…), hors PVW / PGM. Changer leur nombre redéploie le conteneur.
 
 Elles apparaissent en petit dans le panneau. Chacune garde à l'antenne l'image qu'on y dépose, en permanence, sans fondu : glissez-y une image de la bibliothèque (avec le cadrage réglé) ou une case de grille (avec le cadrage de la case). **PVW** y met l'image de la preview ; **✕** la remet au noir. Leurs images sont enregistrées avec le conteneur : un redéploiement les garde.
 
