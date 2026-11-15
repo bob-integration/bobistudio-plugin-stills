@@ -1,7 +1,10 @@
 {
-  "version": "0.19.15",
+  "version": "0.19.16",
   "date": "2026-11-15",
   "changes": {
+    "Sorties AUX à droite du PGM (0.19.16)": [
+      "Les sorties AUX se rangent en colonne à droite du PGM, au lieu d'une rangée sous les écrans qui prenait de la hauteur."
+    ],
     "Corrections de l'essai (0.19.15)": [
       "« Grilles ▾ » et le menu d'une case s'ouvraient invisibles en vue Grille : ils vivent dans la bibliothèque, qui était masquée. Elle est désormais repliée, pas masquée.",
       "Le réglage « Sorties AUX » n'apparaissait nulle part : il est dans le panneau ⚙ « Réglages du conteneur ».",

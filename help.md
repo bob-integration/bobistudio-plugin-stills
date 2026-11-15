@@ -33,7 +33,7 @@ Une grille est une fiche de la base des médias, comme une playlist : elle se ra
 
 Dans le panneau ⚙ **Réglages du conteneur** (en haut à droite de la page), **Sorties AUX** ajoute de 1 à 4 sorties supplémentaires (Fill + Key chacune, flux `<nom>_aux1`, `<nom>_aux1_key`…), hors PVW / PGM. Changer leur nombre redéploie le conteneur.
 
-Elles apparaissent en petit dans le panneau. Chacune garde à l'antenne l'image qu'on y dépose, en permanence, sans fondu : glissez-y une image de la bibliothèque (avec le cadrage réglé) ou une case de grille (avec le cadrage de la case). **PVW** y met l'image de la preview ; **✕** la remet au noir. Leurs images sont enregistrées avec le conteneur : un redéploiement les garde.
+Elles apparaissent en petit, en colonne à droite du PROGRAMME. Chacune garde à l'antenne l'image qu'on y dépose, en permanence, sans fondu : glissez-y une image de la bibliothèque (avec le cadrage réglé) ou une case de grille (avec le cadrage de la case). **PVW** y met l'image de la preview ; **✕** la remet au noir. Leurs images sont enregistrées avec le conteneur : un redéploiement les garde.
 
 ## Image par défaut
 
