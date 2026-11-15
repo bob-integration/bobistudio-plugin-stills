@@ -1087,18 +1087,41 @@ def _do_preview(file, fit, x, y, size):
     with state_lock:
         state["preview"] = {{"file": file, "fit": fit, "x": float(x or 0), "y": float(y or 0),
                              "size": float(size or 100)}}
+    # The image READY TO AIR is prepared now, while a still image is on air (the output thread then
+    # only commits): a TAKE has nothing left to compute. Computed at the TAKE, the PNG decode, the
+    # framing and the YUV conversion held Python for tens of ms right as the transition started —
+    # 1 or 2 frames published 18-27 ms late, repeated by the SDI output, at every TAKE (measured
+    # 2026-11-15 on a DL360, 0.19.17).
+    yuv = None
+    if canvas is not None:
+        yuv = (_frame_key(file, fit, x, y, size), _rgb_to_yuv420(canvas[:, :, :3]), _alpha_to_yuv420(canvas[:, :, 3]))
     with prev_lock:
         prev["gen"] += 1
         prev["rgba"] = canvas
         prev["meta"] = meta if canvas is not None else None
         prev["error"] = "" if canvas is not None else meta
+        prev["yuv"] = yuv
     return canvas is not None, ("ok" if canvas is not None else meta)
+
+
+def _frame_key(file, fit, x, y, size):
+    return (str(file or ""), str(fit or "native"), float(x or 0), float(y or 0), float(size or 100))
 
 
 def _render(file, fit, x, y, size, fade_ms=None):
     if fade_ms is None:
         with state_lock:
             fade_ms = state["transition_ms"]
+    # The image is already prepared in preview (same file, same framing): air it as it is.
+    with prev_lock:
+        ready = prev.get("yuv")
+        if ready is not None and ready[0] == _frame_key(file, fit, x, y, size):
+            canvas, meta = prev["rgba"], prev["meta"]
+        else:
+            ready = None
+    if ready is not None:
+        _set_image(ready[1], ready[2], fade_ms, canvas, meta)
+        return True, "ok"
     canvas, meta = _compose(file, fit, x, y, size)
     if canvas is None:
         if meta == "fichier introuvable":
@@ -1608,7 +1631,7 @@ def _clear_preview():
         state["preview"] = _norm_frame(None)
     with prev_lock:
         prev["gen"] += 1
-        prev["rgba"] = None; prev["meta"] = None; prev["error"] = ""
+        prev["rgba"] = None; prev["meta"] = None; prev["error"] = ""; prev["yuv"] = None
 
 
 def _air_swapping(body):
@@ -1620,6 +1643,8 @@ def _air_swapping(body):
     with prog_lock:
         on_air = prog["meta"] is not None
         old_rgba, old_meta = prog["rgba"], prog["meta"]
+    with frames_lock:
+        old_fill, old_key = frames["fill"], frames["key"]      # what that image airs as, ready
     code, out = _air(body, force_fade=True)
     if code == 200:
         if on_air and old["file"] and old_rgba is not None:
@@ -1632,6 +1657,7 @@ def _air_swapping(body):
             with prev_lock:
                 prev["gen"] += 1
                 prev["rgba"] = old_rgba; prev["meta"] = old_meta; prev["error"] = ""
+                prev["yuv"] = (_frame_key(old["file"], old["fit"], old["x"], old["y"], old["size"]), old_fill, old_key)
         elif on_air and old["file"]:
             _do_preview(old["file"], old["fit"], old["x"], old["y"], old["size"])
         else:
