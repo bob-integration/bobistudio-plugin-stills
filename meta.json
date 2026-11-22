@@ -1,7 +1,11 @@
 {
-  "version": "0.19.29",
+  "version": "0.19.30",
   "date": "2026-11-22",
   "changes": {
+    "Fondus tenus sur un nœud chargé (0.19.30)": [
+      "Le fil de sortie et les fils de fondu passent en priorité temps réel (SCHED_FIFO 5, sous la console son). Mesuré sur r620-2, fondus de 1 s en 1080p50 avec les cœurs partagés saturés : 6 créneaux ratés sur 100 fondus au lieu de 760 à 970 (noyau normal) et de 3 200 à 8 800 (noyau RT). Réglage caché rt_priority, 0 = comportement d'avant ; le conteneur est recréé au prochain déploiement (capacité SYS_NICE).",
+      "Le premier fondu après un démarrage ne fige plus l'image environ 0,2 s : l'étalonnage de la copie mémoire et le démarrage des fils de calcul ont lieu avant la mise à l'antenne."
+    ],
     "Un dossier et ses sous-dossiers vers des grilles (0.19.29)": [
       "Import d'un dossier d'un serveur réseau « Avec les sous-dossiers » : une grille par sous-dossier (« Mariage », « Mariage / Soirée »…), chacune à la taille de ses images. Au-delà de 80 images (10 × 8), la grille est continuée dans « Nom (2) », « Nom (3) »…"
     ],

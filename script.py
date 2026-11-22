@@ -1296,7 +1296,58 @@ def _render(file, fit, x, y, size, fade_ms=None):
     return True, "ok"
 
 
+# ─── Output thread: real-time priority and warm-up (0.19.30, 2026-11-22) ─────────────────────
+# Measured on r620-2 (1 s dissolves at 1080p50, 100 per run, 22 busy loops on the shared cores):
+# at normal priority the output missed 760-970 slots on the normal kernel and 3 200-8 800 on the
+# PREEMPT_RT kernel; in SCHED_FIFO it missed 6, all in the first fade. A real-time kernel only
+# helps a thread that is real-time. The manifest asks for SYS_NICE and an rtprio limit (allow-list
+# in docker_compute); 0 keeps the historical behaviour. Below the audio console (10), above every
+# normal-priority task.
+RT_PRIORITY = max(0, min(20, int(CONFIG.get("rt_priority", 5) or 0)))
+
+
+def _output_thread_setup():
+    """Run by the output thread before its loop: priority first, then everything that is costly on
+    FIRST use, so that it happens here, off air, and not in the first fade."""
+    applied, err = 0, ""
+    if RT_PRIORITY > 0:
+        try:
+            # pid 0 = the calling THREAD on Linux: the HTTP threads stay at normal priority.
+            os.sched_setscheduler(0, os.SCHED_FIFO, os.sched_param(RT_PRIORITY))
+            applied = RT_PRIORITY
+        except (OSError, AttributeError) as e:
+            err = str(e)
+            log("stills: real-time priority %d refused (%s), output stays SCHED_OTHER"
+                % (RT_PRIORITY, e), "warning")
+    with metrics_lock:
+        metrics["rt_priority"] = applied
+        metrics["rt_priority_error"] = err
+    # The first blit of a size calibrates non-temporal stores (bobimxl._nt_calibrer) on the calling
+    # thread: about 200 ms on r620-2, so the first fade after a start froze 10-11 slots (a key copy
+    # was the process's first blit). Calibrate now, for the size every blit of this script uses.
+    try:
+        bobimxl.blit(np.empty(V_FRAME_SIZE, np.uint8), np.zeros(V_FRAME_SIZE, np.uint8))
+    except Exception as e:
+        log("stills: blit warm-up failed (%s)" % (e,), "warning")
+    # Fade workers start on first submit. Started here, by this thread, they inherit its policy;
+    # started by an HTTP thread (_prep_fade), they would stay at normal priority.
+    try:
+        bar = threading.Barrier(_FADE_BANDS, timeout=2.0)
+        list(_FADE_POOL.map(lambda _i: bar.wait(), range(_FADE_BANDS)))
+    except Exception as e:
+        log("stills: fade workers warm-up incomplete (%s)" % (e,), "warning")
+    # Same for the OpenMP team of the mix kernels (one per calling thread), and its creation cost
+    # (11 ms measured on the first mvk call).
+    try:
+        t = np.zeros((16, 64), _NP_DT)
+        if not _mixd_into(t, t, t, 0.5, 0.5) and _MVK:
+            bobimxl.mvk_mixf_into(t, t, t, 0.5, 0.5)
+    except Exception as e:
+        log("stills: mix kernel warm-up failed (%s)" % (e,), "warning")
+
+
 def feeder():
+    _output_thread_setup()
     # Domaine MXL = $MXL_DOMAIN ou /dev/shm/mxl (sous-rép. du tmpfs bind-monté). Deux flux
     # planar nommés comme les anciens shm (les consommateurs MXL les retrouvent par le NOM).
     #
@@ -1586,6 +1637,7 @@ class ControlHandler(BaseHTTPRequestHandler):
                        "log_level": LOG_LEVEL,   # lisible en condition de macro
                        "fading": frames["fade"] is not None,   # fondu en cours (condition de macro)
                        "fade_dither": _DITHER is not None,     # dithered dissolve (kernel ABI 2)
+                       "rt_priority": m.get("rt_priority", 0),  # applied (0 = normal or refused)
                        "program_file": s.get("file", ""),      # image À L'ANTENNE
                        "preview_file": (s.get("preview") or {{}}).get("file", ""),   # image en PREVIEW
                        "default_file": (s.get("default") or {{}}).get("file", ""),   # image par défaut
