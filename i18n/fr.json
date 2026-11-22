@@ -154,5 +154,6 @@
   "plugin.stills.pv_empty2": "Aucune image en preview. Déposez un fichier ici.",
   "plugin.stills.lib_hint3": "Double-clic ou « Choisir » : l'image passe en PREVIEW (TAKE pour l'antenne ; en mode « Take direct », elle part aussitôt). Un fichier de l'ordinateur se dépose sur l'écran PREVIEW, ici (onglet Base) ou dans une case de grille en préparation. Glisser une image sur un bin : l'y ranger.",
   "plugin.stills.imp_new_grid": "Nouvelle grille « {n} »",
-  "plugin.stills.imp_open_grid": "Grille « {g} », dans les cases vides"
+  "plugin.stills.imp_open_grid": "Grille « {g} », dans les cases vides",
+  "plugin.stills.key_search": "Chercher dans la bibliothèque ; Entrée choisit le 1er résultat, Échap revient aux raccourcis"
 }

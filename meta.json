@@ -1,7 +1,10 @@
 {
-  "version": "0.19.26",
+  "version": "0.19.27",
   "date": "2026-11-22",
   "changes": {
+    "Chercher au clavier (0.19.27)": [
+      "« / » met le curseur dans la recherche de la bibliothèque (depuis la vue Grille aussi) ; Entrée envoie le premier résultat en preview et rend les touches aux raccourcis : / , trois lettres d'un nom, Entrée, Espace pour le TAKE. Échap sort de la recherche sans rien choisir. La recherche ignore désormais les accents."
+    ],
     "Un dossier d'un serveur réseau vers une grille (0.19.26)": [
       "Depuis un serveur réseau (SMB…), « Importer ce dossier vers… » ou une sélection de fichiers : les images entrent dans la base en une seule tâche (avancement affiché), puis vont dans un bin, un nouveau bin au nom du dossier, une NOUVELLE GRILLE à leur taille (10 × 8 au plus) ou les cases vides de la grille ouverte."
     ],

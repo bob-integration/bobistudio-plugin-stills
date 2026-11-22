@@ -688,7 +688,7 @@ window.MXLPlugins["stills"] = {
       if(p) auxPost(n, Object.assign({file:p}, frameNow()));
     });
 
-    // Raccourcis clavier : Espace = TAKE, Entrée = CUT, ← → = image précédente / suivante (ordre de la
+    // Raccourcis clavier : / = recherche, Espace = TAKE, Entrée = CUT, ← → = image précédente / suivante (ordre de la
     // bibliothèque affichée), D = rappel de l'image par défaut. Actifs tant que ce panneau est affiché,
     // jamais pendant une saisie, dans une fenêtre ouverte, ni avec Ctrl / Alt / Cmd.
     const onKey = e => {
@@ -697,6 +697,8 @@ window.MXLPlugins["stills"] = {
       if(t && t.closest && (t.closest('input,textarea,select,[contenteditable="true"],dialog') || (t !== document.body && !el.contains(t) && t.closest('[role="dialog"],.modal')))) return;
       if(document.querySelector('dialog[open]')) return;
       const k = e.key, go = f => { e.preventDefault(); f(); };
+      // « / » : the library search (2026-11-22). Grid view folds the library: back to it first.
+      if(k === '/') return go(() => { if(G.view === 'grid' && !G.prep) setView('lib'); ml.focusSearch && ml.focusSearch(); });
       // Vue Grille : pavé numérique 1 à 9 et 0 = cases 1 à 10 ; flèches = case voisine.
       if(G.view === 'grid' && !G.prep){
         const m = /^Numpad([0-9])$/.exec(e.code || '');
