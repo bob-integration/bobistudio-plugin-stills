@@ -1,7 +1,18 @@
 {
-  "version": "0.19.24",
-  "date": "2026-11-15",
+  "version": "0.19.25",
+  "date": "2026-11-22",
   "changes": {
+    "Photos de téléphone droites, profils couleur, HEIC (0.19.25)": [
+      "Une photo prise en portrait sortait couchée : l'orientation EXIF n'était pas lue. Elle l'est, pour la sortie, la preview et les vignettes du conteneur. Le profil couleur intégré au fichier est converti en sRGB (Adobe RGB, Display P3, CMJN d'imprimeur) ; un gris 16 bits n'est plus écrasé en blanc.",
+      "HEIC/HEIF accepté (photos d'iPhone) : décodé par pillow-heif ou par `heif-dec` (libheif), selon ce que porte l'image d'exécution. Sans décodeur, le refus dit pourquoi au lieu de « décodage : … »."
+    ],
+    "Au plus grand par défaut, et un bandeau quand le cadrage pose problème (0.19.25)": [
+      "Le cadrage par défaut passe de « Pixel à pixel » à « Au plus grand » (décision du 2026-11-22) : une image plus grande que la sortie n'est plus rognée sans un mot. Un conteneur déjà réglé garde son cadrage.",
+      "Sous la preview, un bandeau signale une image rognée, agrandie au-delà de sa définition ou déformée, avec un bouton « Au plus grand »."
+    ],
+    "Déposer un fichier de l'ordinateur sur la preview ou dans une case (0.19.25)": [
+      "Un fichier déposé sur l'écran PREVIEW entre dans la base puis passe en preview (jamais directement à l'antenne) ; déposé dans une case de grille en préparation, il la remplit. Jusqu'ici, un fichier du poste n'était pris que sur l'onglet Base de la bibliothèque, sans que rien ne le dise. Nouvelle fonction `ml.upload` de la bibliothèque commune."
+    ],
     "Plus de message à chaque image chargée (0.19.24)": [
       "TAKE, CUT, rappel de l'image par défaut et choix en Take direct n'affichent plus le nom du fichier en bas à droite : l'écran PROGRAMME le montre déjà. Les erreurs restent signalées."
     ],

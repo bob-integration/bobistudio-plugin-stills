@@ -30,6 +30,13 @@
 .stl-pane-pv .stl-screen { border-color:#2e7d32; }
 .stl-pane-pg .stl-screen { border-color:#c62828; }
 .stl-screen img { width:100%; height:100%; object-fit:contain; display:block; }
+.stl-pane-pv .stl-screen.is-drop { box-shadow:inset 0 0 0 3px var(--accent); }
+/* Framing warning under the PREVIEW screen (0.19.25): cropped, upscaled or distorted image. */
+.stl-pv-warn { margin-top:4px; padding:4px 8px; border-radius:4px; font-size:0.8em; line-height:1.35;
+    background:var(--status-warning-bg); color:var(--status-warning-fg); display:flex; align-items:center;
+    gap:8px; flex-wrap:wrap; }
+.stl-pv-warn[hidden] { display:none; }
+.stl-pv-warn-txt { flex:1 1 12em; min-width:0; overflow-wrap:anywhere; }
 .stl-empty { color:var(--text-muted); font-size:0.8em; padding:8px; text-align:center; }
 .stl-take-col { display:flex; flex-direction:column; gap:8px; align-self:center; }
 .stl-ctl .stl-take-col button { min-width:64px; font-weight:700; letter-spacing:0.5px; padding:9px 12px; }

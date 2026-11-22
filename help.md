@@ -21,6 +21,8 @@ Ces deux réglages sont propres à votre navigateur : ils ne changent rien pour 
 
 Dans la bibliothèque (base des médias : bins, recherche, serveurs réseau, fiche Infos) : **double-clic** ou **Choisir** met l'image en **preview**, puis **TAKE** l'envoie à l'antenne. Avec **Take direct** coché (réglage du plugin, décoché par défaut), choisir une image la met directement à l'antenne, sans preview. Glisser une image sur un bin l'y range.
 
+**Depuis l'ordinateur** : déposez un ou plusieurs fichiers sur l'écran **PREVIEW** : ils entrent dans la base (dossier du projet, sur le nœud du conteneur), et le dernier reçu passe en preview, jamais directement à l'antenne. On peut aussi les déposer sur la bibliothèque (onglet Base), ou dans une case de grille en préparation (le premier dans la case, les suivants dans les cases vides d'après). **Importer depuis l'ordinateur…** fait la même chose par un sélecteur de fichiers.
+
 ## Grilles (façon sampleur)
 
 **Grille**, à côté de **Bibliothèque** dans la ligne sous les écrans, remplace la liste par des cases figées qui remplissent l'écran, sans défiler. Un clic sur une case met son image en preview, avec le cadrage de la case ; TAKE l'envoie à l'antenne. En Take direct, elle part aussitôt. Les cases en preview et à l'antenne sont marquées.
@@ -67,10 +69,12 @@ Menu d'une image → **Éditer…** : recadrage, fond (dont l'image floutée), z
 | Mode | Comportement |
 |------|-------------|
 | Pixel à pixel | Image à sa taille native, centrée |
-| Au plus grand | Agrandie sans déformer (bandes transparentes) |
+| Au plus grand (par défaut) | Agrandie ou réduite sans déformer (bandes transparentes) |
 | Plein cadre | Étirée pour remplir (peut déformer) |
 
 Le cadrage se règle dans le menu **Cadrage**, en haut ; **Position et taille…** y ouvre le réglage X/Y/Taille en % du cadre (indépendant de la résolution).
+
+Sous la preview, un bandeau prévient avant le TAKE quand l'image est **rognée** (plus grande que la sortie), **agrandie au-delà de sa définition** (elle sera floue) ou **déformée** (Plein cadre sur une image d'un autre rapport). Son bouton **Au plus grand** recadre la preview d'un geste. Les bandes autour d'une image en Au plus grand ne sont pas signalées : elles se voient.
 
 ## Transition
 
@@ -112,5 +116,6 @@ n'activer que le temps d'un diagnostic, le journal Docker n'est pas roté. Régl
 
 ## Notes
 
-- Formats supportés : PNG (avec alpha), JPEG, TIFF, BMP
+- Formats supportés : PNG (avec alpha), JPEG, TIFF, BMP, GIF (première image), WebP, HEIC/HEIF (photos d'iPhone, si l'image d'exécution du nœud porte le décodeur ; sinon le refus le dit)
+- Une photo prise en portrait sort droite (orientation EXIF lue), et le profil couleur intégré au fichier (Adobe RGB, Display P3, fichier CMJN d'imprimeur) est converti en sRGB
 - Le key est blanc plein si l'image n'a pas de canal alpha

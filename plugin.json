@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.24",
+  "version": "0.19.25",
   "requires": {"core_min": "0.9.9"},
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
@@ -27,7 +27,7 @@
   "deploy_defaults": {
     "folder": "",
     "file": "",
-    "fit": "native",
+    "fit": "fit",
     "x": 0,
     "y": 0,
     "size": 100,
@@ -520,7 +520,7 @@
               "fit",
               "stretch"
             ],
-            "default": "native"
+            "default": "fit"
           },
           "x": {
             "label": "Décalage X",

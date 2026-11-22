@@ -27,8 +27,8 @@
     <details class="stl-pop">
       <summary data-i18n="plugin.stills.framing_menu2">Cadrage</summary>
       <div class="stl-pop-body stl-fit">
-        <label><input type="radio" name="stl-fit" value="native" checked> <span data-i18n="plugin.stills.fit_native">Pixel à pixel</span></label>
-        <label><input type="radio" name="stl-fit" value="fit"> <span data-i18n="plugin.stills.fit_fit">Au plus grand</span></label>
+        <label><input type="radio" name="stl-fit" value="native"> <span data-i18n="plugin.stills.fit_native">Pixel à pixel</span></label>
+        <label><input type="radio" name="stl-fit" value="fit" checked> <span data-i18n="plugin.stills.fit_fit">Au plus grand</span></label>
         <label><input type="radio" name="stl-fit" value="stretch"> <span data-i18n="plugin.stills.fit_stretch">Plein cadre</span></label>
         <button type="button" class="stl-pos-open" data-i18n="plugin.stills.pos_size_open">Position et taille…</button>
       </div>
@@ -92,7 +92,8 @@
   <div class="stl-pp">
     <figure class="stl-pane stl-pane-pv">
       <figcaption><span class="stl-tag stl-tag-pv" data-i18n="plugin.stills.preview">PREVIEW</span> <span class="stl-pv-info stl-info"></span></figcaption>
-      <div class="stl-screen"><img class="stl-pv-img" alt="" hidden><span class="stl-empty stl-pv-empty" data-i18n="plugin.stills.pv_empty">Aucune image en preview</span></div>
+      <div class="stl-screen"><img class="stl-pv-img" alt="" hidden><span class="stl-empty stl-pv-empty" data-i18n="plugin.stills.pv_empty2">Aucune image en preview. Déposez un fichier ici.</span></div>
+      <div class="stl-pv-warn" hidden><span class="stl-pv-warn-txt"></span> <button type="button" class="btn btn-sm stl-pv-fitbtn" data-i18n="plugin.stills.fit_fit">Au plus grand</button></div>
     </figure>
     <div class="stl-take-col">
       <button type="button" class="stl-take" data-i18n="plugin.stills.take" data-i18n-title="plugin.stills.take_tip" title="Preview vers l'antenne, avec le fondu réglé (touche Espace)">TAKE</button>

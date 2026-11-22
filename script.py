@@ -15,10 +15,10 @@
 # {plugin_version} sont des placeholders. TOUTE autre accolade littérale ({{ }})
 # doit être doublée, sinon str.format() échoue.
 # ─────────────────────────────────────────────────────────────────────────────
-import os, io, time, json, threading, urllib.parse
+import os, io, time, json, threading, urllib.parse, shutil, subprocess, tempfile
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import bobimxl
 
 
@@ -223,7 +223,18 @@ except (TypeError, ValueError):
     AUX_N = 0
 AUX_SHM = [(HOSTNAME + "_aux%d" % (i + 1), HOSTNAME + "_aux%d_key" % (i + 1)) for i in range(AUX_N)]
 
-IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tif", ".tiff")
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tif", ".tiff", ".heic", ".heif")
+HEIF_EXTS = (".heic", ".heif")
+
+# HEIC/HEIF (iPhone photos, 0.19.25): Pillow does not read them. Two decoders are accepted, whichever
+# the runtime image carries: the pillow-heif opener, or libheif's `heif-dec` command (Debian
+# libheif-examples). Neither: the file is refused with a message that says why, not "decoding failed".
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+    HEIF_DECODER = "pillow-heif"
+except Exception:
+    HEIF_DECODER = "heif-dec" if shutil.which("heif-dec") else ""
 
 try:
     RESAMPLE = Image.Resampling.LANCZOS
@@ -236,11 +247,11 @@ def _norm_frame(d):
     d = d if isinstance(d, dict) else {{}}
     try:
         return {{"file": str(d.get("file") or "").strip(),
-                 "fit": d.get("fit") if d.get("fit") in ("native", "fit", "stretch") else "native",
+                 "fit": d.get("fit") if d.get("fit") in ("native", "fit", "stretch") else "fit",
                  "x": float(d.get("x") or 0), "y": float(d.get("y") or 0),
                  "size": float(d.get("size") or 100)}}
     except (TypeError, ValueError):
-        return {{"file": "", "fit": "native", "x": 0.0, "y": 0.0, "size": 100.0}}
+        return {{"file": "", "fit": "fit", "x": 0.0, "y": 0.0, "size": 100.0}}
 
 
 _PERSISTED = CONFIG.get("stills_state") if isinstance(CONFIG.get("stills_state"), dict) else {{}}
@@ -248,7 +259,7 @@ state_lock = threading.Lock()
 state = {{
     "folder": CONFIG.get("folder") or "",
     "file":   CONFIG.get("file") or "",
-    "fit":    CONFIG.get("fit") or "native",   # native | fit | stretch
+    "fit":    CONFIG.get("fit") or "fit",      # native | fit | stretch (default "fit" since 0.19.25)
     "x":      float(CONFIG.get("x") or 0),      # décalage % de la largeur (centré)
     "y":      float(CONFIG.get("y") or 0),      # décalage % de la hauteur (centré)
     "size":   float(CONFIG.get("size") or 100), # échelle %
@@ -261,7 +272,7 @@ state = {{
     # MODE TAKE (comme un mélangeur) : choisir une image la met en PREVIEW, `/take` l'envoie à
     # l'antenne. `take_direct` = ancien comportement (choisir = antenne). Défaut : mode Take.
     "take_direct": _as_bool_cfg(CONFIG.get("take_direct"), default=False),
-    "preview": {{"file": "", "fit": "native", "x": 0.0, "y": 0.0, "size": 100.0}},
+    "preview": {{"file": "", "fit": "fit", "x": 0.0, "y": 0.0, "size": 100.0}},
     # Default image, recalled in one gesture (key, macro), and the AUX images. Persisted by the
     # orchestrator (`control.persist`, param `stills_state`): set here, they survive a redeploy.
     "default": _norm_frame(_PERSISTED.get("default") or CONFIG.get("default_image")),
@@ -1000,6 +1011,67 @@ def _set_image(fill_bytes, key_bytes, fade_ms, rgba=None, meta=None):
             prog["since"] = time.time(); prog["gen"] += 1
 
 
+def _heif_decode(full):
+    """HEIC/HEIF -> PIL image through `heif-dec` (orientation already applied by libheif)."""
+    fd, tmp = tempfile.mkstemp(suffix=".png", prefix="stills-heif-")
+    os.close(fd)
+    try:
+        r = subprocess.run(["heif-dec", full, tmp], capture_output=True, timeout=30)
+        if r.returncode != 0:
+            raise ValueError((r.stderr or r.stdout or b"").decode("utf-8", "replace").strip()[-200:] or "heif-dec %d" % r.returncode)
+        im = Image.open(tmp)
+        im.load()
+        return im
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def _open_image(full):
+    """Open an image file as the operator sees it on their screen: (PIL image RGBA, format, notes).
+
+    - EXIF orientation applied: a portrait phone photo came out lying on its side (0.19.25);
+    - embedded ICC profile converted to sRGB (CMYK print files included);
+    - 16-bit greyscale scaled down instead of clipped to white;
+    - HEIC/HEIF through whichever decoder the runtime image carries (HEIF_DECODER).
+    Raises ValueError with a message meant for the operator."""
+    notes = {{}}
+    if full.lower().endswith(HEIF_EXTS):
+        if not HEIF_DECODER:
+            raise ValueError("HEIC : l'image d'exécution de ce conteneur ne sait pas le lire "
+                             "(décodeur absent ; mettre à jour l'image bobi-compute du nœud)")
+        img = _heif_decode(full) if HEIF_DECODER == "heif-dec" else Image.open(full)
+        fmt = "HEIF"
+    else:
+        img = Image.open(full)
+        fmt = img.format or ""
+    try:
+        o = img.getexif().get(0x0112) or 1
+    except Exception:
+        o = 1
+    if o != 1:
+        img = ImageOps.exif_transpose(img)
+        notes["rotated"] = int(o)
+    icc = img.info.get("icc_profile")
+    if icc:
+        try:
+            from PIL import ImageCms
+            alpha = img.mode in ("RGBA", "LA", "PA") or "transparency" in img.info
+            src_mode = "CMYK" if img.mode == "CMYK" else ("RGBA" if alpha else "RGB")
+            out_mode = "RGBA" if alpha else "RGB"
+            img = ImageCms.profileToProfile(img.convert(src_mode), ImageCms.ImageCmsProfile(io.BytesIO(icc)),
+                                            ImageCms.createProfile("sRGB"), outputMode=out_mode)
+            notes["icc"] = True
+        except Exception as e:                    # unreadable profile: the pixels as they are
+            log("profil ICC ignoré (%s) : %s" % (os.path.basename(full), e), "warning")
+    if img.mode in ("I;16", "I;16B", "I;16L", "I"):
+        a = np.asarray(img).astype(np.uint32)
+        img = Image.fromarray((np.clip(a, 0, 65535) >> 8).astype(np.uint8), "L")
+    return img.convert("RGBA"), fmt, notes
+
+
 def _compose(file, fit, x, y, size):
     """Le CADRAGE — SEUL calcul de l'image de sortie, partagé par la sortie (`_render`) et la
     preview (`_do_preview`) : ce qu'on voit en preview EST ce qui passera, au pixel près.
@@ -1008,9 +1080,9 @@ def _compose(file, fit, x, y, size):
     if not full or not os.path.isfile(full):
         return None, "fichier introuvable"
     try:
-        img = Image.open(full)
-        src_fmt = img.format or ""
-        img = img.convert("RGBA")
+        img, src_fmt, notes = _open_image(full)
+    except ValueError as e:
+        return None, str(e)
     except Exception as e:
         return None, "décodage : %s" % e
     w0, h0 = img.size
@@ -1043,7 +1115,23 @@ def _compose(file, fit, x, y, size):
              "format": src_fmt, "alpha": bool(src[:, :, 3].min() < 255),
              "fit": fit, "x": float(x or 0), "y": float(y or 0), "size": float(size or 100),
              "drawn_w": tw, "drawn_h": th, "out_w": WIDTH, "out_h": HEIGHT}}
+    meta.update(notes)
+    meta["warn"] = _framing_warnings(w0, h0, fit, tw, th, max(0, dx1 - dx0), max(0, dy1 - dy0))
     return canvas, meta
+
+
+def _framing_warnings(w0, h0, fit, tw, th, vis_w, vis_h):
+    """What the operator should know before a TAKE, as codes the UI words: the image does not show
+    whole (cropped), is enlarged past its own definition (upscaled, soft), or is deformed (distorted).
+    Nothing is said for what the operator chose on purpose and can see: bands around a fitted image."""
+    out = []
+    if vis_w < tw - 1 or vis_h < th - 1:
+        out.append("cropped")
+    if tw > w0 * 1.05 or th > h0 * 1.05:
+        out.append("upscaled")
+    if fit == "stretch" and abs((w0 / h0) / (WIDTH / HEIGHT) - 1) > 0.02:
+        out.append("distorted")
+    return out
 
 
 # ─── Programme / preview : JPEG à la demande ─────────────────────────────────
@@ -1181,7 +1269,7 @@ def _do_preview(file, fit, x, y, size):
 
 
 def _frame_key(file, fit, x, y, size):
-    return (str(file or ""), str(fit or "native"), float(x or 0), float(y or 0), float(size or 100))
+    return (str(file or ""), str(fit or "fit"), float(x or 0), float(y or 0), float(size or 100))
 
 
 def _render(file, fit, x, y, size, fade_ms=None):
@@ -1568,13 +1656,9 @@ class ControlHandler(BaseHTTPRequestHandler):
         if not full or not os.path.isfile(full):
             self._json(404, {{"error": "introuvable"}}); return
         try:
-            im = Image.open(full); im.thumbnail((160, 160))
-            if im.mode in ("RGBA", "LA", "P"):
-                im = im.convert("RGBA")
-                bg = Image.new("RGB", im.size, (32, 36, 42))   # fond neutre sous l'alpha
-                bg.paste(im, mask=im.split()[-1]); im = bg
-            else:
-                im = im.convert("RGB")
+            im = _open_image(full)[0]; im.thumbnail((160, 160))
+            bg = Image.new("RGB", im.size, (32, 36, 42))   # fond neutre sous l'alpha
+            bg.paste(im, mask=im.split()[-1]); im = bg
             buf = io.BytesIO(); im.save(buf, "JPEG", quality=80)
             data = buf.getvalue()
             self.send_response(200); self.send_header("Content-Type", "image/jpeg")

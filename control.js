@@ -35,7 +35,7 @@ window.MXLPlugins["stills"] = {
     const status = $('.stl-status');
     let selected = '';   // chemin (relatif) de l'image sélectionnée
 
-    const fit  = () => { const r = el.querySelector('input[name="stl-fit"]:checked'); return r ? r.value : 'native'; };
+    const fit  = () => { const r = el.querySelector('input[name="stl-fit"]:checked'); return r ? r.value : 'fit'; };
     const setFit = v => { const r = el.querySelector(`input[name="stl-fit"][value="${v}"]`); if(r) r.checked = true; };
     const xv = () => parseFloat($('.stl-x').value || '0') || 0;
     const yv = () => parseFloat($('.stl-y').value || '0') || 0;
@@ -52,7 +52,7 @@ window.MXLPlugins["stills"] = {
       onAction:(id, m)=>{ selected = m.path; choose(); ml.markCurrent ? ml.markCurrent() : ml.render(); },   // repère seul : render() rechargeait toutes les vignettes
       current:()=>selected,
       imageFormat:()=>(outFmt.w ? {w:outFmt.w, h:outFmt.h} : undefined),   // l'éditeur d'image propose le format de SORTIE
-      hint:T('plugin.stills.lib_hint2','Double-clic ou « Choisir » : l\'image passe en PREVIEW (TAKE pour l\'antenne ; en mode « Take direct », elle part aussitôt). Glisser une image sur un bin : l\'y ranger.'),
+      hint:T('plugin.stills.lib_hint3','Double-clic ou « Choisir » : l\'image passe en PREVIEW (TAKE pour l\'antenne ; en mode « Take direct », elle part aussitôt). Un fichier de l\'ordinateur se dépose sur l\'écran PREVIEW, ici (onglet Base) ou dans une case de grille en préparation. Glisser une image sur un bin : l\'y ranger.'),
     });
 
     // Écrans PREVIEW / PROGRAMME redimensionnables : glisser la poignée (souris ou doigt), flèches au
@@ -204,8 +204,36 @@ window.MXLPlugins["stills"] = {
       if(!m) return '';
       const pos = (m.x||m.y||m.size!==100) ? ` (${m.x},${m.y} · ${m.size}%)` : '';
       return `${m.name} · ${m.src_w}×${m.src_h} · ${m.format||'?'}${m.alpha?' + alpha':''}`
+           + (m.rotated ? ` · ${T('plugin.stills.rotated','redressée (EXIF)')}` : '')
            + ` · ${T('plugin.stills.framing','cadrage')} ${FIT_LBL[m.fit]||m.fit}${pos}`;
     }
+    // What the operator must know before a TAKE (codes from the container's _framing_warnings). The
+    // button refits the preview "Au plus grand" with the same position and scale reset.
+    const WARN = {
+      cropped:   m => T('plugin.stills.warn_cropped', 'Image rognée : {w}×{h} ne tient pas dans la sortie {ow}×{oh}'),
+      upscaled:  m => T('plugin.stills.warn_upscaled', 'Image agrandie au-delà de sa définition ({w}×{h}) : elle sera floue'),
+      distorted: m => T('plugin.stills.warn_distorted', 'Image déformée : son rapport largeur/hauteur n\'est pas celui de la sortie'),
+    };
+    function pvWarn(m){
+      const box = $('.stl-pv-warn'), codes = ((m && m.warn) || []).filter(c => WARN[c]);
+      box.hidden = !codes.length; if(!codes.length) return;
+      $('.stl-pv-warn-txt').textContent = codes.map(c => WARN[c](m).replace('{w}', m.src_w).replace('{h}', m.src_h)
+        .replace('{ow}', m.out_w).replace('{oh}', m.out_h)).join(' · ');
+      $('.stl-pv-fitbtn').hidden = m.fit === 'fit' && !(m.x || m.y || m.size !== 100);
+    }
+    $('.stl-pv-fitbtn').onclick = () => { setFit('fit'); $('.stl-x').value = 0; $('.stl-y').value = 0; $('.stl-size').value = 100; previewNow(); };
+    // Files dropped from the computer (0.19.25): sent to the base like « Importer depuis l'ordinateur… »,
+    // then used where they were dropped — the PREVIEW screen (the last one received goes to preview,
+    // never to air) or a grid cell. Until then a desktop file was only taken on the library's Base tab.
+    const isFiles = dt => !!dt && [...(dt.types || [])].includes('Files') && ![...dt.types].some(t => t.startsWith('application/x-'));
+    const pvScr = $('.stl-pane-pv .stl-screen');
+    pvScr.addEventListener('dragover', e => { if(!isFiles(e.dataTransfer)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; pvScr.classList.add('is-drop'); });
+    pvScr.addEventListener('dragleave', e => { if(!pvScr.contains(e.relatedTarget)) pvScr.classList.remove('is-drop'); });
+    pvScr.addEventListener('drop', e => {
+      pvScr.classList.remove('is-drop'); if(!isFiles(e.dataTransfer)) return;
+      e.preventDefault();
+      ml.upload(e.dataTransfer.files, r => { selected = r.path; ml.markCurrent ? ml.markCurrent() : ml.render(); previewNow(); });
+    });
     function sinceTxt(ts){
       if(!ts) return '';
       const d = Math.max(0, Math.round(Date.now()/1000 - ts)), t = new Date(ts*1000).toLocaleTimeString();
@@ -234,7 +262,7 @@ window.MXLPlugins["stills"] = {
         auxRender(s);
         if(adoptPv){
           adoptPv = false; const p = s.preview || {};
-          if(pvf){ setFit(p.fit || 'native'); $('.stl-x').value = p.x ?? 0; $('.stl-y').value = p.y ?? 0; $('.stl-size').value = p.size ?? 100; }
+          if(pvf){ setFit(p.fit || 'fit'); $('.stl-x').value = p.x ?? 0; $('.stl-y').value = p.y ?? 0; $('.stl-size').value = p.size ?? 100; }
         }
         const df = s.default_file || '';
         $('.stl-default-name').textContent = df ? df.split('/').pop() : '—';
@@ -243,7 +271,7 @@ window.MXLPlugins["stills"] = {
         if(!selected){
           selected = pvf || s.file || '';
           const p = s.preview || {};
-          if(selected){ setFit(p.fit || s.fit || 'native');
+          if(selected){ setFit(p.fit || s.fit || 'fit');
             $('.stl-x').value = p.x ?? s.x ?? 0; $('.stl-y').value = p.y ?? s.y ?? 0; $('.stl-size').value = p.size ?? s.size ?? 100; ml.render(); }
         }
         const dc = $('.stl-direct'); if(dc && dc !== document.activeElement) dc.checked = !!s.take_direct; syncMode();
@@ -269,8 +297,8 @@ window.MXLPlugins["stills"] = {
         else if(pm && !s.preview_error){
           const g = `${s.preview_gen}-${kv}`;
           setImg('pv', `${base}/preview.jpg?view=${kv}&g=${g}`, true);
-          $('.stl-pv-info').textContent = infoLine(pm);
-        } else { setImg('pv', '', false); $('.stl-pv-info').textContent = s.preview_error || ''; }
+          $('.stl-pv-info').textContent = infoLine(pm); pvWarn(pm);
+        } else { setImg('pv', '', false); $('.stl-pv-info').textContent = s.preview_error || ''; pvWarn(null); }
         // Programme
         clearTimeout(seen.fadeT);
         if(s.fading) seen.fadeT = setTimeout(refresh, 250);
@@ -398,7 +426,7 @@ window.MXLPlugins["stills"] = {
       }
       if(!path) return;
       selected = path;
-      setFit(c.fit || 'native'); $('.stl-x').value = c.x || 0; $('.stl-y').value = c.y || 0; $('.stl-size').value = c.size || 100;
+      setFit(c.fit || 'fit'); $('.stl-x').value = c.x || 0; $('.stl-y').value = c.y || 0; $('.stl-size').value = c.size || 100;
       if(ml.markCurrent) ml.markCurrent();
       choose();
     }
@@ -412,7 +440,7 @@ window.MXLPlugins["stills"] = {
     }
 
     // ── Préparation : chaque geste modifie la fiche, enregistrée aussitôt (par lot de 600 ms).
-    const bare = c => c ? {asset:c.asset || null, file:c.file || '', label:c.label || '', fit:c.fit || 'native', x:c.x || 0, y:c.y || 0, size:c.size || 100} : null;
+    const bare = c => c ? {asset:c.asset || null, file:c.file || '', label:c.label || '', fit:c.fit || 'fit', x:c.x || 0, y:c.y || 0, size:c.size || 100} : null;
     function changed(){
       renderGrid();
       clearTimeout(G.saveT);
@@ -522,7 +550,7 @@ window.MXLPlugins["stills"] = {
       const b = e.target.closest('[data-cell]'); if(!b) return;          // vers une autre case (préparation) ou une sortie AUX
       e.dataTransfer.setData('application/x-stills-cell', b.dataset.cell); e.dataTransfer.effectAllowed = 'copyMove';
     });
-    const accepts = dt => [...(dt.types || [])].some(t => t === 'application/x-stills-cell' || t === 'application/x-bobi-assets' || t === 'application/x-bobi-asset');
+    const accepts = dt => isFiles(dt) || [...(dt.types || [])].some(t => t === 'application/x-stills-cell' || t === 'application/x-bobi-assets' || t === 'application/x-bobi-asset');
     gel.addEventListener('dragover', e => {
       const b = e.target.closest('[data-cell]'); if(!b || !G.prep || !accepts(e.dataTransfer)) return;
       e.preventDefault(); gel.querySelectorAll('.is-drop').forEach(x => x !== b && x.classList.remove('is-drop')); b.classList.add('is-drop');
@@ -532,6 +560,18 @@ window.MXLPlugins["stills"] = {
       const b = e.target.closest('[data-cell]'); if(!b || !G.prep) return;
       e.preventDefault(); b.classList.remove('is-drop');
       const i = +b.dataset.cell, dt = e.dataTransfer, from = dt.getData('application/x-stills-cell');
+      if(isFiles(dt)){
+        // First file into this cell, the next ones into the following empty cells, as they arrive.
+        const g = G.grid; let first = true;
+        ml.upload(dt.files, r => {
+          if(G.grid !== g) return;
+          if(first){ first = false; place([r.asset.id], i); return; }
+          const k = g.cells.findIndex((c, j) => j > i && !c);
+          if(k < 0){ toast(T('plugin.stills.gfull','Plus de case vide : le reste n\'est pas placé'), 'warning'); return; }
+          place([r.asset.id], k);
+        });
+        return;
+      }
       if(from !== ''){ const j = +from, g = G.grid; if(j !== i){ [g.cells[i], g.cells[j]] = [g.cells[j], g.cells[i]]; changed(); } return; }
       let ids = []; try{ ids = JSON.parse(dt.getData('application/x-bobi-assets') || '[]'); }catch(_){}
       if(!ids.length && dt.getData('application/x-bobi-asset')) ids = [dt.getData('application/x-bobi-asset')];

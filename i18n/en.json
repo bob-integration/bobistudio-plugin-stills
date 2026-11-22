@@ -44,7 +44,6 @@
   "plugin.stills.program": "PROGRAM",
   "plugin.stills.take": "TAKE",
   "plugin.stills.cut": "CUT",
-  "plugin.stills.pv_empty": "No image in preview",
   "plugin.stills.pg_empty": "Nothing on air",
   "plugin.stills.take_direct": "Direct take",
   "plugin.stills.take_direct_tip": "Checked: picking an image puts it straight on air (no preview)",
@@ -53,7 +52,6 @@
   "plugin.stills.stream": "Stream",
   "plugin.stills.stream_tip": "Opens the output as a WebRTC stream in the monitor: to see a fade for real",
   "plugin.stills.pick": "Pick",
-  "plugin.stills.lib_hint2": "Double-click or \"Pick\": the image goes to PREVIEW (TAKE sends it on air; in \"Direct take\" mode it goes on air at once). Drag an image onto a bin to file it there.",
   "plugin.stills.framing": "framing",
   "plugin.stills.since": "since",
   "plugin.stills.fading": "fade in progress",
@@ -148,5 +146,11 @@
   "plugin.stills.key_step": "Previous / next image (neighbouring cell in Grid view)",
   "plugin.stills.key_default": "Recall the default image",
   "plugin.stills.key_numpad": "Numeric keypad, Grid view: cells 1 to 10",
-  "plugin.stills.keys_note": "Inactive while typing, in an open dialog, or with Ctrl / Alt / Cmd."
+  "plugin.stills.keys_note": "Inactive while typing, in an open dialog, or with Ctrl / Alt / Cmd.",
+  "plugin.stills.rotated": "straightened (EXIF)",
+  "plugin.stills.warn_cropped": "Cropped image: {w}×{h} does not fit in the {ow}×{oh} output",
+  "plugin.stills.warn_upscaled": "Image enlarged past its own definition ({w}×{h}): it will look soft",
+  "plugin.stills.warn_distorted": "Distorted image: its aspect ratio is not the output's",
+  "plugin.stills.pv_empty2": "No image in preview. Drop a file here.",
+  "plugin.stills.lib_hint3": "Double-click or \"Pick\": the image goes to PREVIEW (TAKE sends it on air; in \"Direct take\" mode it goes on air at once). A file from your computer can be dropped on the PREVIEW screen, here (Base tab) or into a grid cell while preparing. Drag an image onto a bin to file it there."
 }
