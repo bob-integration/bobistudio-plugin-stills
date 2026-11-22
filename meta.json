@@ -1,7 +1,10 @@
 {
-  "version": "0.19.25",
+  "version": "0.19.26",
   "date": "2026-11-22",
   "changes": {
+    "Un dossier d'un serveur réseau vers une grille (0.19.26)": [
+      "Depuis un serveur réseau (SMB…), « Importer ce dossier vers… » ou une sélection de fichiers : les images entrent dans la base en une seule tâche (avancement affiché), puis vont dans un bin, un nouveau bin au nom du dossier, une NOUVELLE GRILLE à leur taille (10 × 8 au plus) ou les cases vides de la grille ouverte."
+    ],
     "Photos de téléphone droites, profils couleur, HEIC (0.19.25)": [
       "Une photo prise en portrait sortait couchée : l'orientation EXIF n'était pas lue. Elle l'est, pour la sortie, la preview et les vignettes du conteneur. Le profil couleur intégré au fichier est converti en sRGB (Adobe RGB, Display P3, CMJN d'imprimeur) ; un gris 16 bits n'est plus écrasé en blanc.",
       "HEIC/HEIF accepté (photos d'iPhone) : décodé par pillow-heif ou par `heif-dec` (libheif), selon ce que porte l'image d'exécution. Sans décodeur, le refus dit pourquoi au lieu de « décodage : … »."

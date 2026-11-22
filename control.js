@@ -48,6 +48,12 @@ window.MXLPlugins["stills"] = {
     const outFmt = {w:0, h:0};             // format de sortie, relevé par l'état
     const ml = this._ml = window.MediaLibrary.mount($('.stl-lib-host'), {
       vmid, T, toast, kinds:['image'], view:'grid', fill:true,   // fills .stl-lib-host, sized below
+      // Share import (a folder or a selection of a network server): also into a grid (2026-11-22).
+      importTargets: name => {
+        const out = [{label:T('plugin.stills.imp_new_grid','Nouvelle grille « {n} »').replace('{n}', name), run:rs => gridFromImport(name, rs, null)}];
+        if(G.grid) out.push({label:T('plugin.stills.imp_open_grid','Grille « {g} », dans les cases vides').replace('{g}', G.grid.name), run:rs => gridFromImport(name, rs, G.grid.id)});
+        return out;
+      },
       actions:[{id:'show', label:T('plugin.stills.pick','Choisir'), primary:true}],
       onAction:(id, m)=>{ selected = m.path; choose(); ml.markCurrent ? ml.markCurrent() : ml.render(); },   // repère seul : render() rechargeait toutes les vignettes
       current:()=>selected,
@@ -489,6 +495,22 @@ window.MXLPlugins["stills"] = {
       const j = await gcall('POST', '/api/media/grids', {name, vmid, doc:{cols:6, rows:4}});
       if(!j) return;
       G.names[j.id] = name; G.prep = true; await openGrid(j.id); setView('grid');
+    }
+    // Imported share files into a grid: a new one sized to them (at most 10 × 8), or the open one from
+    // its first empty cell. The cells take the current framing, like a drop from the library.
+    async function gridFromImport(name, rs, gid){
+      const ids = rs.map(r => r.asset && r.asset.id).filter(Boolean); if(!ids.length) return;
+      if(gid == null){
+        const n = Math.min(ids.length, 80);
+        let cols = Math.min(10, Math.max(1, Math.ceil(Math.sqrt(n * 1.6))));
+        const rows = Math.min(8, Math.ceil(n / cols)); if(cols * rows < n) cols = 10;
+        const j = await gcall('POST', '/api/media/grids', {name, vmid, doc:{cols, rows}}); if(!j) return;
+        G.names[j.id] = name; await openGrid(j.id);
+      } else if(G.active !== gid) await openGrid(gid);
+      const g = G.grid; if(!g) return;
+      const k = g.cells.findIndex(c => !c);
+      if(k < 0){ toast(T('plugin.stills.gfull','Plus de case vide : le reste n\'est pas placé'), 'warning'); return; }
+      place(ids, k); setView('grid');
     }
     async function renameGrid(){
       const g = G.grid; if(!g) return;
