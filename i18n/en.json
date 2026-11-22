@@ -155,5 +155,7 @@
   "plugin.stills.lib_hint3": "Double-click or \"Pick\": the image goes to PREVIEW (TAKE sends it on air; in \"Direct take\" mode it goes on air at once). A file from your computer can be dropped on the PREVIEW screen, here (Base tab) or into a grid cell while preparing. Drag an image onto a bin to file it there.",
   "plugin.stills.imp_new_grid": "New grid “{n}”",
   "plugin.stills.imp_open_grid": "Grid “{g}”, in its empty cells",
-  "plugin.stills.key_search": "Search the library; Enter picks the first result, Esc goes back to the shortcuts"
+  "plugin.stills.key_search": "Search the library; Enter picks the first result, Esc goes back to the shortcuts",
+  "plugin.stills.warn_rights": "Rights expired on {d}",
+  "plugin.stills.warn_old": "Photo from {y}"
 }

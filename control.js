@@ -220,12 +220,22 @@ window.MXLPlugins["stills"] = {
       upscaled:  m => T('plugin.stills.warn_upscaled', 'Image agrandie au-delà de sa définition ({w}×{h}) : elle sera floue'),
       distorted: m => T('plugin.stills.warn_distorted', 'Image déformée : son rapport largeur/hauteur n\'est pas celui de la sortie'),
     };
+    // From the media base (2026-11-22), for a portrait library: rights expired, and the year of an old
+    // photo (2 years or more, from the date written in the file, never the copy date).
+    function baseWarn(m){
+      const a = m && m.file && ml.byPath ? ml.byPath(m.file) : null, md = (a && a.meta) || {}, out = [];
+      if(md.rights_until && String(md.rights_until) < new Date().toISOString().slice(0, 10))
+        out.push(T('plugin.stills.warn_rights', 'Droits expirés le {d}').replace('{d}', md.rights_until));
+      const y = a && a.file_created && a.file_created_src === 'meta' ? parseInt(a.file_created.slice(0, 4), 10) : 0;
+      if(y && new Date().getFullYear() - y >= 2) out.push(T('plugin.stills.warn_old', 'Photo de {y}').replace('{y}', y));
+      return out;
+    }
     function pvWarn(m){
-      const box = $('.stl-pv-warn'), codes = ((m && m.warn) || []).filter(c => WARN[c]);
-      box.hidden = !codes.length; if(!codes.length) return;
-      $('.stl-pv-warn-txt').textContent = codes.map(c => WARN[c](m).replace('{w}', m.src_w).replace('{h}', m.src_h)
-        .replace('{ow}', m.out_w).replace('{oh}', m.out_h)).join(' · ');
-      $('.stl-pv-fitbtn').hidden = m.fit === 'fit' && !(m.x || m.y || m.size !== 100);
+      const box = $('.stl-pv-warn'), codes = ((m && m.warn) || []).filter(c => WARN[c]), extra = baseWarn(m);
+      box.hidden = !codes.length && !extra.length; if(box.hidden) return;
+      $('.stl-pv-warn-txt').textContent = [...extra, ...codes.map(c => WARN[c](m).replace('{w}', m.src_w).replace('{h}', m.src_h)
+        .replace('{ow}', m.out_w).replace('{oh}', m.out_h))].join(' · ');
+      $('.stl-pv-fitbtn').hidden = !codes.length || (m.fit === 'fit' && !(m.x || m.y || m.size !== 100));
     }
     $('.stl-pv-fitbtn').onclick = () => { setFit('fit'); $('.stl-x').value = 0; $('.stl-y').value = 0; $('.stl-size').value = 100; previewNow(); };
     // Files dropped from the computer (0.19.25): sent to the base like « Importer depuis l'ordinateur… »,

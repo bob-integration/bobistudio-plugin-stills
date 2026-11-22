@@ -1,7 +1,10 @@
 {
-  "version": "0.19.27",
+  "version": "0.19.28",
   "date": "2026-11-22",
   "changes": {
+    "Droits et ancienneté avant le TAKE (0.19.28)": [
+      "Le bandeau sous la preview signale une photo dont les droits ont expiré (champ « Droits jusqu'au » de la base des médias) et l'année d'une photo de plus de deux ans (date inscrite dans le fichier). Entrée dans la recherche choisit la photo principale d'une personne quand il y en a une."
+    ],
     "Chercher au clavier (0.19.27)": [
       "« / » met le curseur dans la recherche de la bibliothèque (depuis la vue Grille aussi) ; Entrée envoie le premier résultat en preview et rend les touches aux raccourcis : / , trois lettres d'un nom, Entrée, Espace pour le TAKE. Échap sort de la recherche sans rien choisir. La recherche ignore désormais les accents."
     ],
