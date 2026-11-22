@@ -49,8 +49,10 @@ window.MXLPlugins["stills"] = {
     const ml = this._ml = window.MediaLibrary.mount($('.stl-lib-host'), {
       vmid, T, toast, kinds:['image'], view:'grid', fill:true,   // fills .stl-lib-host, sized below
       // Share import (a folder or a selection of a network server): also into a grid (2026-11-22).
-      importTargets: name => {
-        const out = [{label:T('plugin.stills.imp_new_grid','Nouvelle grille « {n} »').replace('{n}', name), run:rs => gridFromImport(name, rs, null)}];
+      importTargets: (name, opt) => {
+        const out = [opt && opt.subfolders
+          ? {label:T('plugin.stills.imp_grid_per_dir','Une grille par sous-dossier (« {n} », « {n} / … »)').replace(/\{n\}/g, name), run:rs => gridsFromImport(name, rs, true)}
+          : {label:T('plugin.stills.imp_new_grid','Nouvelle grille « {n} »').replace('{n}', name), run:rs => gridsFromImport(name, rs, false)}];
         if(G.grid) out.push({label:T('plugin.stills.imp_open_grid','Grille « {g} », dans les cases vides').replace('{g}', G.grid.name), run:rs => gridFromImport(name, rs, G.grid.id)});
         return out;
       },
@@ -506,21 +508,43 @@ window.MXLPlugins["stills"] = {
       if(!j) return;
       G.names[j.id] = name; G.prep = true; await openGrid(j.id); setView('grid');
     }
+    // Imported share files into NEW grids, each sized to its images: one grid, or one per subfolder
+    // (« Mariage », « Mariage / Soirée »…). A grid holds 80 cells (10 × 8): beyond, « Nom (2) »… The
+    // first grid made is the one shown.
+    const GRID_CELLS = 80;
+    async function gridsFromImport(name, rs, perDir){
+      const groups = new Map();
+      rs.forEach(r => { const k = perDir ? (r.dir || '') : ''; (groups.get(k) || groups.set(k, []).get(k)).push(r); });
+      let first = null;
+      for(const [dir, list] of groups){
+        const base = dir ? name + ' / ' + dir.split('/').join(' / ') : name;
+        for(let i = 0; i < list.length; i += GRID_CELLS){
+          const id = await gridFromImport(i ? `${base} (${i / GRID_CELLS + 1})` : base, list.slice(i, i + GRID_CELLS), null, true);
+          if(id && !first) first = id;
+        }
+      }
+      if(first && G.active !== first) await openGrid(first);
+      setView('grid');
+    }
     // Imported share files into a grid: a new one sized to them (at most 10 × 8), or the open one from
     // its first empty cell. The cells take the current framing, like a drop from the library.
-    async function gridFromImport(name, rs, gid){
-      const ids = rs.map(r => r.asset && r.asset.id).filter(Boolean); if(!ids.length) return;
+    async function gridFromImport(name, rs, gid, quiet){
+      const ids = rs.map(r => r.asset && r.asset.id).filter(Boolean); if(!ids.length) return null;
       if(gid == null){
-        const n = Math.min(ids.length, 80);
+        const n = Math.min(ids.length, GRID_CELLS);
         let cols = Math.min(10, Math.max(1, Math.ceil(Math.sqrt(n * 1.6))));
         const rows = Math.min(8, Math.ceil(n / cols)); if(cols * rows < n) cols = 10;
-        const j = await gcall('POST', '/api/media/grids', {name, vmid, doc:{cols, rows}}); if(!j) return;
-        G.names[j.id] = name; await openGrid(j.id);
+        const j = await gcall('POST', '/api/media/grids', {name, vmid, doc:{cols, rows, cells:ids.slice(0, n).map(id => Object.assign({asset:id}, frameNow()))}});
+        if(!j) return null;
+        G.names[j.id] = name; if(!G.open.includes(j.id)) G.open.push(j.id);
+        if(quiet){ await saveOpen(); return j.id; }
+        await openGrid(j.id); setView('grid'); return j.id;
       } else if(G.active !== gid) await openGrid(gid);
       const g = G.grid; if(!g) return;
       const k = g.cells.findIndex(c => !c);
       if(k < 0){ toast(T('plugin.stills.gfull','Plus de case vide : le reste n\'est pas placé'), 'warning'); return; }
       place(ids, k); setView('grid');
+      return gid;
     }
     async function renameGrid(){
       const g = G.grid; if(!g) return;

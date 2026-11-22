@@ -157,5 +157,6 @@
   "plugin.stills.imp_open_grid": "Grid “{g}”, in its empty cells",
   "plugin.stills.key_search": "Search the library; Enter picks the first result, Esc goes back to the shortcuts",
   "plugin.stills.warn_rights": "Rights expired on {d}",
-  "plugin.stills.warn_old": "Photo from {y}"
+  "plugin.stills.warn_old": "Photo from {y}",
+  "plugin.stills.imp_grid_per_dir": "One grid per subfolder (“{n}”, “{n} / …”)"
 }

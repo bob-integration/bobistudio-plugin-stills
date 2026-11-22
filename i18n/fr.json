@@ -157,5 +157,6 @@
   "plugin.stills.imp_open_grid": "Grille « {g} », dans les cases vides",
   "plugin.stills.key_search": "Chercher dans la bibliothèque ; Entrée choisit le 1er résultat, Échap revient aux raccourcis",
   "plugin.stills.warn_rights": "Droits expirés le {d}",
-  "plugin.stills.warn_old": "Photo de {y}"
+  "plugin.stills.warn_old": "Photo de {y}",
+  "plugin.stills.imp_grid_per_dir": "Une grille par sous-dossier (« {n} », « {n} / … »)"
 }

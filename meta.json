@@ -1,7 +1,10 @@
 {
-  "version": "0.19.28",
+  "version": "0.19.29",
   "date": "2026-11-22",
   "changes": {
+    "Un dossier et ses sous-dossiers vers des grilles (0.19.29)": [
+      "Import d'un dossier d'un serveur réseau « Avec les sous-dossiers » : une grille par sous-dossier (« Mariage », « Mariage / Soirée »…), chacune à la taille de ses images. Au-delà de 80 images (10 × 8), la grille est continuée dans « Nom (2) », « Nom (3) »…"
+    ],
     "Droits et ancienneté avant le TAKE (0.19.28)": [
       "Le bandeau sous la preview signale une photo dont les droits ont expiré (champ « Droits jusqu'au » de la base des médias) et l'année d'une photo de plus de deux ans (date inscrite dans le fichier). Entrée dans la recherche choisit la photo principale d'une personne quand il y en a une."
     ],
