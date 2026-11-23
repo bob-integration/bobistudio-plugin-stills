@@ -1,7 +1,10 @@
 {
-  "version": "0.19.31",
+  "version": "0.19.32",
   "date": "2026-11-23",
   "changes": {
+    "Témoin d'échéance (0.19.32)": [
+      "Le fil de sortie publie le bloc commun `deadline` sur :8080 : une image est due à la fin de son créneau de grille, un créneau sauté compte aussi. L'orchestrateur le relève : des images fixes Dédiées ne sont garanties que si aucune échéance n'a été manquée en 24 h."
+    ],
     "Priorité temps réel donnée par l'orchestrateur (0.19.31)": [
       "Le plugin déclare le rôle de son fil de sortie (« programme ») ; l'orchestrateur en déduit la priorité (5), accorde le droit nécessaire et affiche dans la fiche du conteneur la priorité effectivement obtenue. Le réglage caché rt_priority disparaît. Demande un orchestrateur qui porte ce mécanisme : sur un plus ancien, la sortie reste en priorité normale et le dit sur :8080."
     ],

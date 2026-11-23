@@ -1394,6 +1394,12 @@ def _feed(inst, opened):
     # trames successives) : c'est la seule mesure qui ne dépend pas d'un observateur qui pourrait
     # lui-même prendre du retard. Publié sur :8080 (`slots_missed`) — à comparer à l'intention.
     last_idx = None; missed = 0
+    # DEADLINE WITNESS (P1, 2026-11-23): the common block read by the orchestrator. A frame is due
+    # at the END of its grid slot (TAI), the point past which a reader gets the previous one; a
+    # skipped slot (index gap, as `slots_missed`) is missed too. Free run: one period after start.
+    _DW = (bobimxl.DeadlineWitness(period, clock=bobimxl.now_tai)
+           if hasattr(bobimxl, "DeadlineWitness") else None)
+    _dw_due = None
     # PUBLISH LAG (2026-11-15): time from the start of a frame's slot to the end of its last
     # commit. A frame committed late is not « missed » (it is in its slot), but an output that
     # reads it at the slot boundary gets the previous one: repeat, then a double step. Fades
@@ -1459,6 +1465,8 @@ def _feed(inst, opened):
             idx = fill_w.next_index(lookahead=1)
             if last_idx is not None and idx > last_idx + 1:
                 missed += idx - last_idx - 1
+                if _DW is not None:
+                    _DW.skipped(idx - last_idx - 1)
             if last_idx is not None and idx == last_idx:
                 lag["dup_index"] += 1          # same slot written twice: one weight never shown
             last_idx = idx
@@ -1468,9 +1476,13 @@ def _feed(inst, opened):
             # un mélangeur « au plus rapide » abandonnait l'attente à la demi-période.
             t_idx = fill_w.index_time_ns(idx)
             t_slot = t_idx - (fill_w.index_time_ns(idx + 1) - t_idx) // 2
+            if _DW is not None:
+                _dw_due = t_slot + (fill_w.index_time_ns(idx + 1) - t_idx)   # end of the slot
             bobimxl.sleep_until_tai(t_slot)
         else:
             t0 = time.time(); idx = None   # cadence libre → compteur interne du writer
+            if _DW is not None:
+                _dw_due = bobimxl.now_tai() + int(period * 1e9)
         with frames_lock:
             snap = {{"fill": frames["fill"], "key": frames["key"],
                      "fade": dict(frames["fade"]) if frames["fade"] else None}}
@@ -1559,6 +1571,8 @@ def _feed(inst, opened):
             for (wf, wk), (pf, pk) in zip(aux_w, payloads):
                 _put_still(wf, pf, idx)
                 _put_still(wk, pk, idx)
+        if _DW is not None:
+            _DW.done(_dw_due)
         if t_slot is not None:
             l_ms = (bobimxl.now_tai() - t_slot) / 1e6
             lag["win_max"] = max(lag["win_max"], l_ms)
@@ -1582,6 +1596,8 @@ def _feed(inst, opened):
                 metrics["publish_late_15ms"] = lag["over15"]
                 metrics["publish_late_20ms"] = lag["over20"]
                 metrics["slot_written_twice"] = lag["dup_index"]
+                if _DW is not None:
+                    metrics["deadline"] = _DW.report()   # cf. DEADLINE WITNESS
             lag["win_max"] = 0.0
             win_cnt = 0; win_start = time.time()
         if not GENLOCK:
