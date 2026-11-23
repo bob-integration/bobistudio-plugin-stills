@@ -8,15 +8,10 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.30",
+  "version": "0.19.31",
   "requires": {"core_min": "0.9.9"},
   "resources": {
-    "cap_add": [
-      "SYS_NICE"
-    ],
-    "ulimits": {
-      "rtprio": 20
-    }
+    "realtime": "program"
   },
   "description": "Affiche une image fixe (avec transparence) et la produit dans le pipeline MXL (flux planar natifs via bobimxl) : sortie Fill + sortie Key (alpha).",
   "nav": {
@@ -48,7 +43,6 @@
     "transition_ms": 150,
     "take_direct": false,
     "aux_outputs": 0,
-    "rt_priority": 5,
     "stills_state": {}
   },
   "media_volume": true,
@@ -745,16 +739,6 @@
       ],
       "default": "info",
       "scope": "user"
-    },
-    {
-      "key": "rt_priority",
-      "type": "number",
-      "label": "Sortie temps réel (priorité, 0 = normale)",
-      "help": "Priorité SCHED_FIFO du fil de sortie et des fils de fondu. Mesuré : avec le nœud chargé, 6 créneaux ratés sur 100 fondus au lieu de plusieurs milliers. Pris en compte au démarrage du conteneur.",
-      "default": 5,
-      "min": 0,
-      "max": 20,
-      "hidden": true
     }
   ]
 }

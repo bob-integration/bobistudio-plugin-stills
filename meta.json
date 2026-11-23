@@ -1,7 +1,10 @@
 {
-  "version": "0.19.30",
-  "date": "2026-11-22",
+  "version": "0.19.31",
+  "date": "2026-11-23",
   "changes": {
+    "Priorité temps réel donnée par l'orchestrateur (0.19.31)": [
+      "Le plugin déclare le rôle de son fil de sortie (« programme ») ; l'orchestrateur en déduit la priorité (5), accorde le droit nécessaire et affiche dans la fiche du conteneur la priorité effectivement obtenue. Le réglage caché rt_priority disparaît. Demande un orchestrateur qui porte ce mécanisme : sur un plus ancien, la sortie reste en priorité normale et le dit sur :8080."
+    ],
     "Fondus tenus sur un nœud chargé (0.19.30)": [
       "Le fil de sortie et les fils de fondu passent en priorité temps réel (SCHED_FIFO 5, sous la console son). Mesuré sur r620-2, fondus de 1 s en 1080p50 avec les cœurs partagés saturés : 6 créneaux ratés sur 100 fondus au lieu de 760 à 970 (noyau normal) et de 3 200 à 8 800 (noyau RT). Réglage caché rt_priority, 0 = comportement d'avant ; le conteneur est recréé au prochain déploiement (capacité SYS_NICE).",
       "Le premier fondu après un démarrage ne fige plus l'image environ 0,2 s : l'étalonnage de la copie mémoire et le démarrage des fils de calcul ont lieu avant la mise à l'antenne."

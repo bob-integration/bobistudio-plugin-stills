@@ -1300,28 +1300,24 @@ def _render(file, fit, x, y, size, fade_ms=None):
 # Measured on r620-2 (1 s dissolves at 1080p50, 100 per run, 22 busy loops on the shared cores):
 # at normal priority the output missed 760-970 slots on the normal kernel and 3 200-8 800 on the
 # PREEMPT_RT kernel; in SCHED_FIFO it missed 6, all in the first fade. A real-time kernel only
-# helps a thread that is real-time. The manifest asks for SYS_NICE and an rtprio limit (allow-list
-# in docker_compute); 0 keeps the historical behaviour. Below the audio console (10), above every
-# normal-priority task.
-RT_PRIORITY = max(0, min(20, int(CONFIG.get("rt_priority", 5) or 0)))
+# helps a thread that is real-time. Since 0.19.31 the priority comes from the orchestrator: the
+# manifest declares the role (`resources.realtime: program`), the core grants SYS_NICE and passes
+# the grid's number in CONFIG, bobimxl applies it (rt_promote) and keeps what was obtained.
+RT_PRIORITY = bobimxl.rt_priority(CONFIG) if hasattr(bobimxl, "rt_promote") else 0
 
 
 def _output_thread_setup():
     """Run by the output thread before its loop: priority first, then everything that is costly on
     FIRST use, so that it happens here, off air, and not in the first fade."""
-    applied, err = 0, ""
-    if RT_PRIORITY > 0:
-        try:
-            # pid 0 = the calling THREAD on Linux: the HTTP threads stay at normal priority.
-            os.sched_setscheduler(0, os.SCHED_FIFO, os.sched_param(RT_PRIORITY))
-            applied = RT_PRIORITY
-        except (OSError, AttributeError) as e:
-            err = str(e)
-            log("stills: real-time priority %d refused (%s), output stays SCHED_OTHER"
-                % (RT_PRIORITY, e), "warning")
+    if hasattr(bobimxl, "rt_promote"):
+        # pid 0 inside: the calling THREAD only, the HTTP threads stay at normal priority. The fade
+        # threads are started by this one and inherit SCHED_FIFO, which they need.
+        bobimxl.rt_promote(RT_PRIORITY)
+        rt = bobimxl.rt_state()
+    else:
+        rt = dict(rt_priority=0, rt_priority_error="orchestrator too old: no bobimxl.rt_promote")
     with metrics_lock:
-        metrics["rt_priority"] = applied
-        metrics["rt_priority_error"] = err
+        metrics.update(rt)
     # The first blit of a size calibrates non-temporal stores (bobimxl._nt_calibrer) on the calling
     # thread: about 200 ms on r620-2, so the first fade after a start froze 10-11 slots (a key copy
     # was the process's first blit). Calibrate now, for the size every blit of this script uses.
