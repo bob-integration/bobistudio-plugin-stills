@@ -48,6 +48,7 @@ window.MXLPlugins["stills"] = {
     const outFmt = {w:0, h:0};             // format de sortie, relevé par l'état
     const ml = this._ml = window.MediaLibrary.mount($('.stl-lib-host'), {
       vmid, T, toast, kinds:['image'], view:'grid', fill:true,   // fills .stl-lib-host, sized below
+      autoRefresh:2000,                                          // new media appear by themselves (2026-11-26)
       // Share import (a folder or a selection of a network server): also into a grid (2026-11-22).
       importTargets: (name, opt) => {
         const out = [opt && opt.subfolders
@@ -78,17 +79,29 @@ window.MXLPlugins["stills"] = {
     // AUX beside the PGM: the fewest columns that keep the stack within the height of the screens
     // (one column under tall screens, side by side once the grip shrinks them). Each candidate is
     // applied and measured: widening the column may shrink the screens, so the result is exact.
-    const AUX_W = 150, AUX_GAP = 6, pgScr = $('.stl-pane-pg .stl-screen');
+    const AUX_W = 150, AUX_GAP = 6, SCR_MIN = 160, pgScr = $('.stl-pane-pg .stl-screen');
     function auxLayout(){
       const box = pp.querySelector('.stl-aux'), n = box && !box.hidden ? box.children.length : 0;
       const side = n && getComputedStyle(box).display === 'grid';   // row modes (PGM right, narrow) use flex
+      const cols = k => { pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-w', (k * AUX_W + (k - 1) * AUX_GAP) + 'px'); };
       let k = 1;
-      for(; side && k < n; k++){
-        pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-w', (k * AUX_W + (k - 1) * AUX_GAP) + 'px');
+      for(; side && k <= n; k++){
+        cols(k);
+        // One more column must not squeeze the screens below SCR_MIN: AUX then stack taller (2026-11-26).
+        if(k > 1 && pgScr.getBoundingClientRect().width < SCR_MIN){ k--; break; }
         const rows = Math.ceil(n / k), fh = box.firstElementChild.offsetHeight;
-        if(rows * fh + (rows - 1) * AUX_GAP <= pgScr.getBoundingClientRect().height + 1) break;
+        if(k === n || rows * fh + (rows - 1) * AUX_GAP <= pgScr.getBoundingClientRect().height + 1) break;
       }
-      pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-w', (k * AUX_W + (k - 1) * AUX_GAP) + 'px');
+      cols(Math.max(1, Math.min(k, n || 1)));
+      return keepScreens();
+    }
+    // The grip width covers the whole row: the TAKE column and the AUX (150 px each) are fixed, so a
+    // small width left the PREVIEW / PROGRAMME screens at 0 px — they vanished (2026-11-26). Widen the
+    // row until each screen keeps SCR_MIN; returns the width actually applied (saved by the grip).
+    function keepScreens(){
+      const sw = pgScr.getBoundingClientRect().width, cur = pp.getBoundingClientRect().width;
+      if(ctlEl.classList.contains('is-pgm-right') || !cur || sw >= SCR_MIN - 1 || !pp.style.maxWidth || pp.style.maxWidth === 'none') return cur;
+      return setPp(cur + 2 * (SCR_MIN - sw));
     }
     let ctlW = 0;
     new ResizeObserver(() => { const w = ctlEl.clientWidth; if(w !== ctlW){ ctlW = w; auxLayout(); } }).observe(ctlEl);
@@ -107,7 +120,7 @@ window.MXLPlugins["stills"] = {
       ev.preventDefault(); grip.setPointerCapture(ev.pointerId); grip.classList.add('is-drag');
       const y0 = ev.clientY, w0 = pp.getBoundingClientRect().width;
       let w = w0;
-      const move = e => { w = setPp(w0 + (e.clientY - y0) * PX_PER_DY); auxLayout(); };
+      const move = e => { setPp(w0 + (e.clientY - y0) * PX_PER_DY); w = auxLayout(); };
       const up = () => { grip.classList.remove('is-drag'); savePp(w);
         grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); };
       grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
@@ -115,7 +128,7 @@ window.MXLPlugins["stills"] = {
     grip.addEventListener('dblclick', () => { savePp(setPp(0)); auxLayout(); });
     grip.addEventListener('keydown', e => {
       const d = e.key === 'ArrowUp' ? -40 : e.key === 'ArrowDown' ? 40 : 0; if(!d) return;
-      e.preventDefault(); savePp(setPp(pp.getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1))); auxLayout();
+      e.preventDefault(); setPp(pp.getBoundingClientRect().width + d * (e.shiftKey ? 4 : 1)); savePp(auxLayout());
     });
 
     // Disposition « PGM seul, à droite » : la bibliothèque prend toute la hauteur à gauche. Préférence

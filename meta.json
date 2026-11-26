@@ -1,7 +1,12 @@
 {
-  "version": "0.19.32",
-  "date": "2026-11-23",
+  "version": "0.19.33",
+  "date": "2026-11-26",
   "changes": {
+    "Bibliothèque vivante (0.19.33)": [
+      "Tri dans la barre en vignettes : nom, date d'entrée, date de création, taille, croissant ou décroissant. Le tri choisi est retenu sur ce poste et survit au rechargement de la page.",
+      "Les nouveaux médias apparaissent seuls : la base est vérifiée toutes les 2 s et la liste n'est relue que si elle a changé, sans bouger le défilement ni perdre la sélection. Un point sur le bouton ↻ montre que c'est actif ; l'actualisation se met en pause pendant un menu, une fenêtre, un glisser ou si l'onglet est caché.",
+      "Écrans PREVIEW / PROGRAMME réduits à la poignée avec des AUX : ils disparaissaient (0 px), la colonne TAKE et les AUX gardant leur largeur. Chaque écran garde désormais au moins 160 px, et les AUX ne se rangent plus côte à côte quand cela écraserait les écrans."
+    ],
     "Témoin d'échéance (0.19.32)": [
       "Le fil de sortie publie le bloc commun `deadline` sur :8080 : une image est due à la fin de son créneau de grille, un créneau sauté compte aussi. L'orchestrateur le relève : des images fixes Dédiées ne sont garanties que si aucune échéance n'a été manquée en 24 h."
     ],

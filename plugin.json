@@ -8,7 +8,7 @@
     "class": "mode-media",
     "oklch": "0.78 0.04 230"
   },
-  "version": "0.19.32",
+  "version": "0.19.33",
   "requires": {"core_min": "0.9.9"},
   "resources": {
     "realtime": "program"
