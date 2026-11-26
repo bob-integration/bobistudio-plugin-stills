@@ -76,32 +76,45 @@ window.MXLPlugins["stills"] = {
       pp.style.maxWidth = w + 'px'; ctlEl.classList.toggle('is-compact', w < 520);
       return w;
     };
-    // AUX beside the PGM: the fewest columns that keep the stack within the height of the screens
-    // (one column under tall screens, side by side once the grip shrinks them). Each candidate is
-    // applied and measured: widening the column may shrink the screens, so the result is exact.
-    const AUX_W = 150, AUX_GAP = 6, SCR_MIN = 160, pgScr = $('.stl-pane-pg .stl-screen');
+    // AUX beside the PGM (asked 2026-11-14, then 2026-11-26):
+    //  - tall screens: small AUX (AUX_W) in the fewest columns that keep their stack within the height
+    //    of the screens — one column, then side by side;
+    //  - otherwise ONE row where every screen has the same size: PREVIEW, PROGRAMME and each AUX.
+    // Each candidate is applied and measured (the AUX width changes the screens' width).
+    const AUX_W = 150, AUX_GAP = 6, PP_GAP = 10, SCR_MIN = 160, pgScr = $('.stl-pane-pg .stl-screen');
+    const auxCols = (k, t) => { pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-tile', t + 'px');
+      pp.style.setProperty('--stl-aux-w', (k * t + (k - 1) * AUX_GAP) + 'px'); };
     function auxLayout(){
       const box = pp.querySelector('.stl-aux'), n = box && !box.hidden ? box.children.length : 0;
       const side = n && getComputedStyle(box).display === 'grid';   // row modes (PGM right, narrow) use flex
-      const cols = k => { pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-w', (k * AUX_W + (k - 1) * AUX_GAP) + 'px'); };
-      let k = 1;
-      for(; side && k <= n; k++){
-        cols(k);
-        // One more column must not squeeze the screens below SCR_MIN: AUX then stack taller (2026-11-26).
-        if(k > 1 && pgScr.getBoundingClientRect().width < SCR_MIN){ k--; break; }
-        const rows = Math.ceil(n / k), fh = box.firstElementChild.offsetHeight;
-        if(k === n || rows * fh + (rows - 1) * AUX_GAP <= pgScr.getBoundingClientRect().height + 1) break;
+      pp.classList.remove('is-aux-row');
+      if(!side){ auxCols(1, AUX_W); return keepScreens(); }
+      for(let k = 1; k < n; k++){
+        auxCols(k, AUX_W);
+        const rows = Math.ceil(n / k), fh = box.firstElementChild.offsetHeight, scr = pgScr.getBoundingClientRect();
+        if(scr.width >= SCR_MIN - 1 && rows * fh + (rows - 1) * AUX_GAP <= scr.height + 1) return pp.getBoundingClientRect().width;
       }
-      cols(Math.max(1, Math.min(k, n || 1)));
-      return keepScreens();
+      // One row, all screens alike: S = (row − TAKE − gaps) / (2 + n), never under SCR_MIN while the row can widen.
+      pp.classList.add('is-aux-row');
+      const take = $('.stl-take-col'), fixed = () => (take ? take.getBoundingClientRect().width : 0) + 3 * PP_GAP + (n - 1) * AUX_GAP;
+      const equal = () => { const S = Math.max(1, Math.floor((pp.getBoundingClientRect().width - fixed()) / (2 + n))); auxCols(n, S); return S; };
+      let S = equal();
+      for(let i = 0; i < 4 && S < SCR_MIN && pp.style.maxWidth && pp.style.maxWidth !== 'none'; i++){
+        setPp(fixed() + (2 + n) * SCR_MIN + 2); S = equal();
+      }
+      return pp.getBoundingClientRect().width;
     }
     // The grip width covers the whole row: the TAKE column and the AUX (150 px each) are fixed, so a
     // small width left the PREVIEW / PROGRAMME screens at 0 px — they vanished (2026-11-26). Widen the
     // row until each screen keeps SCR_MIN; returns the width actually applied (saved by the grip).
     function keepScreens(){
-      const sw = pgScr.getBoundingClientRect().width, cur = pp.getBoundingClientRect().width;
-      if(ctlEl.classList.contains('is-pgm-right') || !cur || sw >= SCR_MIN - 1 || !pp.style.maxWidth || pp.style.maxWidth === 'none') return cur;
-      return setPp(cur + 2 * (SCR_MIN - sw));
+      let cur = pp.getBoundingClientRect().width;
+      for(let i = 0; i < 6; i++){          // a squeezed screen measures 0: widen step by step
+        const sw = pgScr.getBoundingClientRect().width;
+        if(ctlEl.classList.contains('is-pgm-right') || !cur || sw >= SCR_MIN - 1 || !pp.style.maxWidth || pp.style.maxWidth === 'none') break;
+        setPp(cur + 2 * (SCR_MIN - sw)); cur = pp.getBoundingClientRect().width;
+      }
+      return cur;
     }
     let ctlW = 0;
     new ResizeObserver(() => { const w = ctlEl.clientWidth; if(w !== ctlW){ ctlW = w; auxLayout(); } }).observe(ctlEl);

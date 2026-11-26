@@ -1,7 +1,10 @@
 {
-  "version": "0.19.33",
+  "version": "0.19.34",
   "date": "2026-11-26",
   "changes": {
+    "AUX à la taille des écrans quand on réduit (0.19.34)": [
+      "En réduisant les écrans à la poignée, les AUX repassaient l'un sous l'autre, plus hauts que les écrans. Règle désormais : écrans grands, les AUX restent petits et s'empilent tant que leur pile ne dépasse pas la hauteur des écrans ; sinon tout passe sur une seule rangée où PREVIEW, PROGRAMME et chaque AUX ont la même taille, au moins 160 px de large tant que la fenêtre le permet."
+    ],
     "Bibliothèque vivante (0.19.33)": [
       "Tri dans la barre en vignettes : nom, date d'entrée, date de création, taille, croissant ou décroissant. Le tri choisi est retenu sur ce poste et survit au rechargement de la page.",
       "Les nouveaux médias apparaissent seuls : la base est vérifiée toutes les 2 s et la liste n'est relue que si elle a changé, sans bouger le défilement ni perdre la sélection. Un point sur le bouton ↻ montre que c'est actif ; l'actualisation se met en pause pendant un menu, une fenêtre, un glisser ou si l'onglet est caché.",
