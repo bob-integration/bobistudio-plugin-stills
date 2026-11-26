@@ -233,6 +233,8 @@ window.MXLPlugins["stills"] = {
       setTimeout(refresh, 150);
     }
 
+    // Info clamped to two lines by the CSS: the full text stays in the tooltip.
+    function setInfo(sel, txt){ const e = $(sel); if(e.textContent !== txt) e.textContent = e.title = txt; }
     const FIT_LBL = {native:T('plugin.stills.fit_native','Pixel à pixel'), fit:T('plugin.stills.fit_fit','Au plus grand'), stretch:T('plugin.stills.fit_stretch','Plein cadre')};
     function infoLine(m){
       if(!m) return '';
@@ -341,16 +343,16 @@ window.MXLPlugins["stills"] = {
         else if(pm && !s.preview_error){
           const g = `${s.preview_gen}-${kv}`;
           setImg('pv', `${base}/preview.jpg?view=${kv}&g=${g}`, true);
-          $('.stl-pv-info').textContent = infoLine(pm); pvWarn(pm);
-        } else { setImg('pv', '', false); $('.stl-pv-info').textContent = s.preview_error || ''; pvWarn(null); }
+          setInfo('.stl-pv-info', infoLine(pm)); pvWarn(pm);
+        } else { setImg('pv', '', false); setInfo('.stl-pv-info', s.preview_error || ''); pvWarn(null); }
         // Programme
         clearTimeout(seen.fadeT);
         if(s.fading) seen.fadeT = setTimeout(refresh, 250);
         if(gm){
           if(!s.fading || !$('.stl-pg-img').dataset.u)
             setImg('pg', `${base}/program.jpg?view=${kv}&g=${s.program_gen}-${kv}`, true);
-          $('.stl-pg-info').textContent = infoLine(gm) + sinceTxt(s.on_air_since) + (s.fading ? ' · ' + T('plugin.stills.fading','fondu en cours') : '');
-        } else { setImg('pg', '', false); $('.stl-pg-info').textContent = s.file ? s.file.split('/').pop() : ''; }
+          setInfo('.stl-pg-info', infoLine(gm) + sinceTxt(s.on_air_since) + (s.fading ? ' · ' + T('plugin.stills.fading','fondu en cours') : ''));
+        } else { setImg('pg', '', false); setInfo('.stl-pg-info', s.file ? s.file.split('/').pop() : ''); }
         $('.stl-take').disabled = $('.stl-cut').disabled = !pvf;
         outFmt.w = s.width || 0; outFmt.h = s.height || 0;
         status.textContent = `${s.width||0}×${s.height||0} · ${s.fps||0} fps`
@@ -715,7 +717,7 @@ window.MXLPlugins["stills"] = {
         if(fr.file){ if(AX.gen[i] !== g){ AX.gen[i] = g; img.src = `/api/containers/${vmid}/plugin/aux.jpg?n=${i + 1}&view=${kv}&g=${g}`; } img.hidden = false; hint.hidden = true; }
         else { img.hidden = true; hint.hidden = false; AX.gen[i] = null; }
         const err = (s.aux_error || [])[i];
-        fig.querySelector('.stl-aux-info').textContent = err ? '⚠ ' + err : (fr.file ? fr.file.split('/').pop() : '');
+        { const inf = fig.querySelector('.stl-aux-info'); inf.textContent = inf.title = err ? '⚠ ' + err : (fr.file ? fr.file.split('/').pop() : ''); }
         fig.querySelector('[data-aux-clear]').disabled = !fr.file;
         fig.title = (s.aux_shm || [])[i] || '';
       });
