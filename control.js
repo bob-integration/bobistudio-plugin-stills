@@ -84,7 +84,11 @@ window.MXLPlugins["stills"] = {
     const AUX_W = 150, AUX_GAP = 6, PP_GAP = 10, SCR_MIN = 160, pgScr = $('.stl-pane-pg .stl-screen');
     const auxCols = (k, t) => { pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-tile', t + 'px');
       pp.style.setProperty('--stl-aux-w', (k * t + (k - 1) * AUX_GAP) + 'px'); };
-    function auxLayout(){ const w = layoutAux(); tuck(); return w; }
+    function auxLayout(){ const w = layoutAux(); takeH(); tuck(); return w; }
+    // TAKE / CUT centred on the screens, not on the row: a two-line PROGRAMME caption made the row
+    // taller and pushed them up (2026-11-26). The column takes the screen's height (CSS).
+    const takeH = () => pp.style.setProperty('--stl-scr-h', pgScr.getBoundingClientRect().height + 'px');
+    new ResizeObserver(takeH).observe(pgScr);
     function layoutAux(){
       const box = pp.querySelector('.stl-aux'), n = box && !box.hidden ? box.children.length : 0;
       const side = n && getComputedStyle(box).display === 'grid';   // row modes (PGM right, narrow) use flex

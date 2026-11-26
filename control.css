@@ -190,3 +190,6 @@
 .stl-set h4 { margin:0 0 6px; font-size:0.72em; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-muted); }
 .stl-set h4 strong { text-transform:none; letter-spacing:0; color:var(--text); }
 @media (max-width:600px){ .stl-set-body { grid-template-columns:1fr; } }
+/* TAKE / CUT centred on the screens: the column is as tall as a screen, at the bottom of the row
+   (the script sets --stl-scr-h). Centring on the row put them high under a two-line caption. */
+@media (min-width: 721px) { .stl-ctl:not(.is-pgm-right) .stl-take-col { align-self:end; min-height:var(--stl-scr-h, auto); justify-content:center; } }

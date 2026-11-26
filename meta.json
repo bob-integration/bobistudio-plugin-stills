@@ -1,7 +1,10 @@
 {
-  "version": "0.19.38",
+  "version": "0.19.39",
   "date": "2026-11-26",
   "changes": {
+    "TAKE / CUT centrés sur les écrans (0.19.39)": [
+      "Écrans réduits, l'info de PROGRAMME sur deux lignes rehaussait TAKE et CUT. Ils restent désormais centrés sur la hauteur des écrans, à toutes les tailles."
+    ],
     "Un seul menu Réglages (0.19.38)": [
       "Cadrage, Transition, Image par défaut et Affichage sont regroupés dans un menu « Réglages », qui affiche la transition en cours sur son bouton. Take direct reste à côté, visible. La ligne du haut est plus courte, et les écrans y remontent même grands."
     ],
