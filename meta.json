@@ -1,7 +1,10 @@
 {
-  "version": "0.19.34",
+  "version": "0.19.35",
   "date": "2026-11-26",
   "changes": {
+    "AUX dessinés comme les écrans (0.19.35)": [
+      "Les AUX ont le même dessin que PREVIEW et PROGRAMME : étiquette en pastille au-dessus (avec PVW et ✕, compacts), écran encadré dessous. Sur une seule rangée, leurs images s'alignent exactement sur celles des écrans, en haut comme en bas."
+    ],
     "AUX à la taille des écrans quand on réduit (0.19.34)": [
       "En réduisant les écrans à la poignée, les AUX repassaient l'un sous l'autre, plus hauts que les écrans. Règle désormais : écrans grands, les AUX restent petits et s'empilent tant que leur pile ne dépasse pas la hauteur des écrans ; sinon tout passe sur une seule rangée où PREVIEW, PROGRAMME et chaque AUX ont la même taille, au moins 160 px de large tant que la fenêtre le permet."
     ],

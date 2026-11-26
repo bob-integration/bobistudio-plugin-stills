@@ -700,12 +700,13 @@ window.MXLPlugins["stills"] = {
       if(n !== AX.n){
         AX.n = n; AX.gen = [];
         auxBox.hidden = !n;
-        auxBox.innerHTML = Array.from({length:n}, (_, i) => `<figure class="stl-aux-out" data-aux="${i + 1}">
-            <div class="stl-aux-scr"><img alt="" hidden><span>${escH(T('plugin.stills.aux_drop','Glisser une image ici'))}</span></div>
-            <figcaption><strong>AUX ${i + 1}</strong><span></span>
+        // Same design as PREVIEW / PROGRAMME (2026-11-26): tag above, framed screen below.
+        auxBox.innerHTML = Array.from({length:n}, (_, i) => `<figure class="stl-pane stl-aux-out" data-aux="${i + 1}">
+            <figcaption><span class="stl-tag stl-tag-aux">AUX ${i + 1}</span><span class="stl-info stl-aux-info"></span>
               <button type="button" data-aux-pv title="${escH(T('plugin.stills.aux_from_pv','Mettre l\'image de la preview sur cette sortie'))}">${escH(T('plugin.stills.aux_pv','PVW'))}</button>
               <button type="button" data-aux-clear aria-label="${escH(T('plugin.stills.aux_clear','Vider la sortie (noir)'))}">✕</button>
-            </figcaption></figure>`).join('');
+            </figcaption>
+            <div class="stl-screen stl-aux-scr"><img alt="" hidden><span class="stl-empty">${escH(T('plugin.stills.aux_drop','Glisser une image ici'))}</span></div></figure>`).join('');
         auxLayout();
       }
       (s.aux || []).forEach((fr, i) => {
@@ -714,7 +715,7 @@ window.MXLPlugins["stills"] = {
         if(fr.file){ if(AX.gen[i] !== g){ AX.gen[i] = g; img.src = `/api/containers/${vmid}/plugin/aux.jpg?n=${i + 1}&view=${kv}&g=${g}`; } img.hidden = false; hint.hidden = true; }
         else { img.hidden = true; hint.hidden = false; AX.gen[i] = null; }
         const err = (s.aux_error || [])[i];
-        fig.querySelector('figcaption > span').textContent = err ? '⚠ ' + err : (fr.file ? fr.file.split('/').pop() : '');
+        fig.querySelector('.stl-aux-info').textContent = err ? '⚠ ' + err : (fr.file ? fr.file.split('/').pop() : '');
         fig.querySelector('[data-aux-clear]').disabled = !fr.file;
         fig.title = (s.aux_shm || [])[i] || '';
       });
