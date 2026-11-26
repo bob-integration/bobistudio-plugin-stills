@@ -1,7 +1,10 @@
 {
-  "version": "0.19.37",
+  "version": "0.19.38",
   "date": "2026-11-26",
   "changes": {
+    "Un seul menu Réglages (0.19.38)": [
+      "Cadrage, Transition, Image par défaut et Affichage sont regroupés dans un menu « Réglages », qui affiche la transition en cours sur son bouton. Take direct reste à côté, visible. La ligne du haut est plus courte, et les écrans y remontent même grands."
+    ],
     "Écrans remontés à côté de la ligne du haut (0.19.37)": [
       "Quand les écrans tiennent entre Bibliothèque / Grille et Take direct, ils remontent à hauteur de cette ligne, centrés dans l'espace libre : la bibliothèque gagne cette hauteur. Sinon ils restent dessous. La mention « Stockage » passe alors sous Bibliothèque / Grille."
     ],

@@ -24,66 +24,73 @@
     </span>
     <span class="stl-sp"></span>
     <label data-i18n-title="plugin.stills.take_direct_tip" title="Coché : choisir une image la met directement à l'antenne (sans passer par la preview)"><input type="checkbox" class="stl-direct"> <span data-i18n="plugin.stills.take_direct">Take direct</span></label>
-    <details class="stl-pop">
-      <summary data-i18n="plugin.stills.framing_menu2">Cadrage</summary>
-      <div class="stl-pop-body stl-fit">
-        <label><input type="radio" name="stl-fit" value="native"> <span data-i18n="plugin.stills.fit_native">Pixel à pixel</span></label>
-        <label><input type="radio" name="stl-fit" value="fit" checked> <span data-i18n="plugin.stills.fit_fit">Au plus grand</span></label>
-        <label><input type="radio" name="stl-fit" value="stretch"> <span data-i18n="plugin.stills.fit_stretch">Plein cadre</span></label>
-        <button type="button" class="stl-pos-open" data-i18n="plugin.stills.pos_size_open">Position et taille…</button>
-      </div>
-    </details>
-    <details class="stl-pop">
-      <summary><span data-i18n="plugin.stills.transition_menu">Transition</span> <strong class="stl-tr-sum"></strong></summary>
-      <div class="stl-pop-body stl-tr">
-        <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée de la transition au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.duration_ms">Durée (ms)</span> <input type="number" class="stl-fade" value="150" step="50" min="0" max="10000"></label>
-        <label><input type="radio" name="stl-trtype" value="dissolve" checked> <span data-i18n="plugin.stills.tr_dissolve">Fondu</span></label>
-        <label><input type="radio" name="stl-trtype" value="additive"> <span data-i18n="plugin.stills.tr_additive">Fondu additif</span></label>
-        <label><input type="radio" name="stl-trtype" value="wipe"> <span data-i18n="plugin.stills.tr_wipe">Volet</span></label>
-        <div class="stl-wipe-opts" hidden>
-          <label><span data-i18n="plugin.stills.wipe_shape">Forme</span>
-            <select class="stl-wshape">
-              <option value="linear" data-i18n="plugin.stills.ws_linear">Linéaire</option>
-              <option value="iris" data-i18n="plugin.stills.ws_iris">Iris</option>
-              <option value="box" data-i18n="plugin.stills.ws_box">Boîte</option>
-              <option value="diamond" data-i18n="plugin.stills.ws_diamond">Losange</option>
-              <option value="star" data-i18n="plugin.stills.ws_star">Étoile</option>
-              <option value="heart" data-i18n="plugin.stills.ws_heart">Cœur</option>
-              <option value="clock" data-i18n="plugin.stills.ws_clock">Horloge</option>
-            </select></label>
-          <label><span data-i18n="plugin.stills.wipe_angle">Angle (°)</span> <input type="number" class="stl-wangle" value="0" step="15" min="0" max="360"></label>
-          <label><span data-i18n="plugin.stills.wipe_soft">Douceur (%)</span> <input type="number" class="stl-wsoft" value="10" step="5" min="0" max="100"></label>
-          <label><input type="checkbox" class="stl-wrev"> <span data-i18n="plugin.stills.wipe_reverse">Sens inverse</span></label>
-        </div>
-      </div>
-    </details>
-    <details class="stl-pop">
-      <summary><span data-i18n="plugin.stills.default_lbl">Image par défaut :</span> <strong class="stl-default-name">—</strong></summary>
-      <div class="stl-pop-body">
-        <button type="button" class="stl-default-set" data-i18n="plugin.stills.default_set" data-i18n-title="plugin.stills.default_set_tip" title="L'image en preview, avec son cadrage, devient l'image par défaut">Définir</button>
-        <button type="button" class="stl-default-recall" data-i18n="plugin.stills.default_recall" data-i18n-title="plugin.stills.default_recall_tip" title="Met l'image par défaut à l'antenne ; l'image qui y était passe en preview (touche D)">Rappeler</button>
-      </div>
-    </details>
-    <details class="stl-pop">
-      <summary data-i18n="plugin.stills.display_menu">Affichage</summary>
-      <div class="stl-pop-body">
-        <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
-        <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
-        <label data-i18n-title="plugin.stills.keys_tip" title="Préférence de ce navigateur. Décoché : aucune touche n'agit sur ce panneau."><input type="checkbox" class="stl-keys" checked> <span data-i18n="plugin.stills.keys">Raccourcis clavier</span></label>
-        <details class="stl-keys-list">
-          <summary data-i18n="plugin.stills.keys_list">Liste des raccourcis</summary>
-          <dl>
-            <dt><kbd>/</kbd></dt><dd data-i18n="plugin.stills.key_search">Chercher dans la bibliothèque ; Entrée choisit le 1er résultat, Échap revient aux raccourcis</dd>
-            <dt><kbd data-i18n="plugin.stills.key_space">Espace</kbd></dt><dd data-i18n="plugin.stills.key_take">TAKE (avec la transition réglée)</dd>
-            <dt><kbd data-i18n="plugin.stills.key_enter">Entrée</kbd></dt><dd data-i18n="plugin.stills.key_cut">CUT (coupe franche)</dd>
-            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="plugin.stills.key_step">Image précédente / suivante (case voisine en vue Grille)</dd>
-            <dt><kbd>D</kbd></dt><dd data-i18n="plugin.stills.key_default">Rappeler l'image par défaut</dd>
-            <dt><kbd>1</kbd>…<kbd>9</kbd> <kbd>0</kbd></dt><dd data-i18n="plugin.stills.key_numpad">Pavé numérique, vue Grille : cases 1 à 10</dd>
-          </dl>
-          <p data-i18n="plugin.stills.keys_note">Inactifs pendant une saisie, dans une fenêtre ouverte, ou avec Ctrl / Alt / Cmd.</p>
-        </details>
-        <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
-        <div class="stl-status">…</div>
+    <!-- One menu for the settings (asked 2026-11-26: room for the screens beside this row); the
+         transition stays readable on its button, Take direct stays outside (it sends straight to air). -->
+    <details class="stl-pop stl-settings">
+      <summary><span data-i18n="plugin.stills.settings_menu">Réglages</span> · <strong class="stl-tr-sum"></strong></summary>
+      <div class="stl-pop-body stl-set-body">
+        <section class="stl-set">
+          <h4 data-i18n="plugin.stills.framing_menu2">Cadrage</h4>
+          <div class="stl-fit">
+          <label><input type="radio" name="stl-fit" value="native"> <span data-i18n="plugin.stills.fit_native">Pixel à pixel</span></label>
+          <label><input type="radio" name="stl-fit" value="fit" checked> <span data-i18n="plugin.stills.fit_fit">Au plus grand</span></label>
+          <label><input type="radio" name="stl-fit" value="stretch"> <span data-i18n="plugin.stills.fit_stretch">Plein cadre</span></label>
+          <button type="button" class="stl-pos-open" data-i18n="plugin.stills.pos_size_open">Position et taille…</button>
+          </div>
+        </section>
+        <section class="stl-set">
+          <h4 data-i18n="plugin.stills.transition_menu">Transition</h4>
+          <div class="stl-tr">
+          <label class="stl-fade-lbl" data-i18n-title="plugin.stills.fade_tip" title="Durée de la transition au changement d'image (0 = coupe franche)"><span data-i18n="plugin.stills.duration_ms">Durée (ms)</span> <input type="number" class="stl-fade" value="150" step="50" min="0" max="10000"></label>
+          <label><input type="radio" name="stl-trtype" value="dissolve" checked> <span data-i18n="plugin.stills.tr_dissolve">Fondu</span></label>
+          <label><input type="radio" name="stl-trtype" value="additive"> <span data-i18n="plugin.stills.tr_additive">Fondu additif</span></label>
+          <label><input type="radio" name="stl-trtype" value="wipe"> <span data-i18n="plugin.stills.tr_wipe">Volet</span></label>
+          <div class="stl-wipe-opts" hidden>
+            <label><span data-i18n="plugin.stills.wipe_shape">Forme</span>
+              <select class="stl-wshape">
+                <option value="linear" data-i18n="plugin.stills.ws_linear">Linéaire</option>
+                <option value="iris" data-i18n="plugin.stills.ws_iris">Iris</option>
+                <option value="box" data-i18n="plugin.stills.ws_box">Boîte</option>
+                <option value="diamond" data-i18n="plugin.stills.ws_diamond">Losange</option>
+                <option value="star" data-i18n="plugin.stills.ws_star">Étoile</option>
+                <option value="heart" data-i18n="plugin.stills.ws_heart">Cœur</option>
+                <option value="clock" data-i18n="plugin.stills.ws_clock">Horloge</option>
+              </select></label>
+            <label><span data-i18n="plugin.stills.wipe_angle">Angle (°)</span> <input type="number" class="stl-wangle" value="0" step="15" min="0" max="360"></label>
+            <label><span data-i18n="plugin.stills.wipe_soft">Douceur (%)</span> <input type="number" class="stl-wsoft" value="10" step="5" min="0" max="100"></label>
+            <label><input type="checkbox" class="stl-wrev"> <span data-i18n="plugin.stills.wipe_reverse">Sens inverse</span></label>
+          </div>
+          </div>
+        </section>
+        <section class="stl-set">
+          <h4><span data-i18n="plugin.stills.default_lbl">Image par défaut :</span> <strong class="stl-default-name">—</strong></h4>
+          <div>
+          <button type="button" class="stl-default-set" data-i18n="plugin.stills.default_set" data-i18n-title="plugin.stills.default_set_tip" title="L'image en preview, avec son cadrage, devient l'image par défaut">Définir</button>
+          <button type="button" class="stl-default-recall" data-i18n="plugin.stills.default_recall" data-i18n-title="plugin.stills.default_recall_tip" title="Met l'image par défaut à l'antenne ; l'image qui y était passe en preview (touche D)">Rappeler</button>
+          </div>
+        </section>
+        <section class="stl-set">
+          <h4 data-i18n="plugin.stills.display_menu">Affichage</h4>
+          <div>
+          <label data-i18n-title="plugin.stills.view_key_tip" title="Voir le signal de découpe (l'alpha) au lieu du remplissage sur damier"><input type="checkbox" class="stl-viewkey"> <span data-i18n="plugin.stills.view_key">Voir la découpe</span></label>
+          <label data-i18n-title="plugin.stills.pgm_right_tip" title="Seul l'écran PROGRAMME, à droite : la bibliothèque prend toute la hauteur à gauche. La preview reste active (son nom s'affiche), TAKE l'envoie à l'antenne."><input type="checkbox" class="stl-pgm-right"> <span data-i18n="plugin.stills.pgm_right">PGM seul, à droite</span></label>
+          <label data-i18n-title="plugin.stills.keys_tip" title="Préférence de ce navigateur. Décoché : aucune touche n'agit sur ce panneau."><input type="checkbox" class="stl-keys" checked> <span data-i18n="plugin.stills.keys">Raccourcis clavier</span></label>
+          <details class="stl-keys-list">
+            <summary data-i18n="plugin.stills.keys_list">Liste des raccourcis</summary>
+            <dl>
+              <dt><kbd>/</kbd></dt><dd data-i18n="plugin.stills.key_search">Chercher dans la bibliothèque ; Entrée choisit le 1er résultat, Échap revient aux raccourcis</dd>
+              <dt><kbd data-i18n="plugin.stills.key_space">Espace</kbd></dt><dd data-i18n="plugin.stills.key_take">TAKE (avec la transition réglée)</dd>
+              <dt><kbd data-i18n="plugin.stills.key_enter">Entrée</kbd></dt><dd data-i18n="plugin.stills.key_cut">CUT (coupe franche)</dd>
+              <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="plugin.stills.key_step">Image précédente / suivante (case voisine en vue Grille)</dd>
+              <dt><kbd>D</kbd></dt><dd data-i18n="plugin.stills.key_default">Rappeler l'image par défaut</dd>
+              <dt><kbd>1</kbd>…<kbd>9</kbd> <kbd>0</kbd></dt><dd data-i18n="plugin.stills.key_numpad">Pavé numérique, vue Grille : cases 1 à 10</dd>
+            </dl>
+            <p data-i18n="plugin.stills.keys_note">Inactifs pendant une saisie, dans une fenêtre ouverte, ou avec Ctrl / Alt / Cmd.</p>
+          </details>
+          <button type="button" class="stl-monitor" data-i18n-title="plugin.stills.stream_tip" title="Ouvre la sortie en flux WebRTC dans le moniteur : pour voir un fondu en vrai"><span data-i18n="plugin.stills.stream">Stream</span></button>
+          <div class="stl-status">…</div>
+          </div>
+        </section>
       </div>
     </details>
   </div>

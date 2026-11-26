@@ -115,6 +115,7 @@
   "plugin.stills.aux_from_pv": "Put the preview image on this output",
   "plugin.stills.aux_pv": "PVW",
   "plugin.stills.aux_clear": "Clear the output (black)",
+  "plugin.stills.settings_menu": "Settings",
   "plugin.stills.display_menu": "Display",
   "plugin.stills.pos_size_open": "Position and size…",
   "plugin.stills.close": "Close",

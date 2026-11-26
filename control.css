@@ -148,13 +148,13 @@
 .stl-pop[open] > summary { border-color:var(--accent); }
 .stl-pop-body { position:absolute; right:0; top:calc(100% + 4px); z-index:40; display:flex; flex-direction:column; align-items:stretch; gap:6px;
     min-width:200px; padding:8px; background:var(--bg-elev); border:1px solid var(--border); border-radius:6px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
-.stl-pop-body.stl-fit label { display:flex; align-items:center; gap:6px; }
+.stl-fit label { display:flex; align-items:center; gap:6px; }
 .stl-pop-body .stl-fade { width:90px; }
 .stl-pop-body .stl-status { font-size:0.75em; color:var(--text-muted); white-space:normal; max-width:260px; }
 .stl-posdlg form { display:flex; flex-direction:column; gap:8px; }
 .stl-posdlg label { display:flex; justify-content:space-between; gap:12px; align-items:center; }
 .stl-posdlg input { width:100px; }
-.stl-pop-body.stl-tr label, .stl-wipe-opts label { display:flex; align-items:center; gap:6px; }
+.stl-tr label, .stl-wipe-opts label { display:flex; align-items:center; gap:6px; }
 .stl-wipe-opts { display:flex; flex-direction:column; gap:6px; padding-left:18px; }
 .stl-wipe-opts input[type=number] { width:70px; }
 /* Fenêtres du panneau (nom de grille, position et taille) : la carte modale du produit
@@ -184,3 +184,9 @@
 .stl-ctl.is-tucked .stl-side > * { pointer-events:auto; }
 .stl-ctl.is-tucked .stl-pp-grip { pointer-events:auto; }
 .stl-ctl.is-tucked .stl-store { position:absolute; left:0; top:100%; margin-top:6px; max-width:var(--stl-gutter, 200px); white-space:normal; }
+/* Settings menu: four sections side by side, two columns (Cadrage, Transition / Image par défaut, Affichage). */
+.stl-set-body { display:grid; grid-template-columns:repeat(2, minmax(190px, auto)); gap:12px 18px; }
+.stl-set > div { display:flex; flex-direction:column; align-items:stretch; gap:6px; }
+.stl-set h4 { margin:0 0 6px; font-size:0.72em; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-muted); }
+.stl-set h4 strong { text-transform:none; letter-spacing:0; color:var(--text); }
+@media (max-width:600px){ .stl-set-body { grid-template-columns:1fr; } }
