@@ -1,7 +1,10 @@
 {
-  "version": "0.19.36",
+  "version": "0.19.37",
   "date": "2026-11-26",
   "changes": {
+    "Écrans remontés à côté de la ligne du haut (0.19.37)": [
+      "Quand les écrans tiennent entre Bibliothèque / Grille et Take direct, ils remontent à hauteur de cette ligne, centrés dans l'espace libre : la bibliothèque gagne cette hauteur. Sinon ils restent dessous. La mention « Stockage » passe alors sous Bibliothèque / Grille."
+    ],
     "Info du PROGRAMME sur deux lignes (0.19.36)": [
       "Écrans réduits, l'info au-dessus de PROGRAMME (fichier, format, cadrage, depuis …) prenait plus de hauteur que l'écran. Elle tient désormais sur deux lignes au plus, la fin tronquée ; le texte complet reste dans l'infobulle. Idem pour PREVIEW."
     ],

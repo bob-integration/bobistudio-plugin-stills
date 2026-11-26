@@ -84,7 +84,8 @@ window.MXLPlugins["stills"] = {
     const AUX_W = 150, AUX_GAP = 6, PP_GAP = 10, SCR_MIN = 160, pgScr = $('.stl-pane-pg .stl-screen');
     const auxCols = (k, t) => { pp.style.setProperty('--stl-aux-cols', k); pp.style.setProperty('--stl-aux-tile', t + 'px');
       pp.style.setProperty('--stl-aux-w', (k * t + (k - 1) * AUX_GAP) + 'px'); };
-    function auxLayout(){
+    function auxLayout(){ const w = layoutAux(); tuck(); return w; }
+    function layoutAux(){
       const box = pp.querySelector('.stl-aux'), n = box && !box.hidden ? box.children.length : 0;
       const side = n && getComputedStyle(box).display === 'grid';   // row modes (PGM right, narrow) use flex
       pp.classList.remove('is-aux-row');
@@ -116,6 +117,30 @@ window.MXLPlugins["stills"] = {
       }
       return cur;
     }
+    // Screens up beside the top row when the gap between its two groups holds them (asked 2026-11-26),
+    // below it otherwise. The storage line then moves under the view tabs. Measured untucked.
+    const opts = $('.stl-pp-opts'), sideEl = $('.stl-side'), TUCK_GAP = 12;
+    function tuck(){ const was = sideEl.style.marginTop; tuck0(); if(sideEl.style.marginTop !== was) requestAnimationFrame(() => libTop()); }
+    function tuck0(){
+      ctlEl.classList.remove('is-tucked'); sideEl.style.marginTop = pp.style.marginLeft = grip.style.paddingLeft = grip.style.paddingRight = '';
+      if(ctlEl.classList.contains('is-pgm-right') || !opts) return;
+      const kids = [...opts.children].filter(c => c.offsetParent), sp = opts.querySelectorAll(':scope > .stl-sp');
+      if(sp.length < 2 || !kids.length) return;
+      if(opts.getBoundingClientRect().height > Math.max(...kids.map(c => c.getBoundingClientRect().height)) + 4) return;   // wrapped row: stay below
+      const r = pp.getBoundingClientRect(), o = opts.getBoundingClientRect(), left = sp[0].getBoundingClientRect().left, right = sp[1].getBoundingClientRect().right;
+      const avail = right - left - 2 * TUCK_GAP;
+      if(r.width > avail) return;
+      // Centred in the gap, not on the page: the right group is the wider one.
+      const x = Math.round(left + TUCK_GAP + (avail - r.width) / 2), shift = x - r.left;
+      ctlEl.classList.add('is-tucked');
+      pp.style.marginLeft = Math.round(x - sideEl.getBoundingClientRect().left) + 'px';
+      grip.style[shift > 0 ? 'paddingLeft' : 'paddingRight'] = Math.abs(2 * shift) + 'px';
+      ctlEl.style.setProperty('--stl-gutter', Math.max(0, Math.floor(x - o.left - TUCK_GAP)) + 'px');
+      sideEl.style.marginTop = -Math.round(sideEl.getBoundingClientRect().top - o.top) + 'px';
+    }
+    if(opts) new ResizeObserver(() => { tuck(); libTop(); }).observe(opts);
+    { const ro = new ResizeObserver(() => { tuck(); libTop(); });
+      ['.stl-view', '.stl-gtabs', '.stl-gtools', '.stl-pop:last-child'].forEach(q => { const n = $(q); if(n) ro.observe(n); }); }
     let ctlW = 0;
     new ResizeObserver(() => { const w = ctlEl.clientWidth; if(w !== ctlW){ ctlW = w; auxLayout(); } }).observe(ctlEl);
     // Library down to the bottom of the window (2026-11-15): its host gets the height left below its

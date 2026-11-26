@@ -175,3 +175,12 @@
 .stl-keys-list kbd { font:inherit; padding:0 5px; border:1px solid var(--border); border-radius:3px; }
 .stl-keys-list p { margin:0; font-size:0.78em; color:var(--text-muted); }
 .stl-ctl.is-nokeys .stl-grid kbd { display:none; }
+/* Screens tucked up beside the top row (script: is-tucked, only when the gap between its groups
+   holds them). The row stays clickable above the screens' box, the storage line goes under the tabs. */
+.stl-pp-opts { position:relative; z-index:2; }
+.stl-ctl.is-tucked > .stl-pp-opts { pointer-events:none; }
+.stl-ctl.is-tucked > .stl-pp-opts > :not(.stl-sp) { pointer-events:auto; }
+.stl-ctl.is-tucked .stl-side { pointer-events:none; }
+.stl-ctl.is-tucked .stl-side > * { pointer-events:auto; }
+.stl-ctl.is-tucked .stl-pp-grip { pointer-events:auto; }
+.stl-ctl.is-tucked .stl-store { position:absolute; left:0; top:100%; margin-top:6px; max-width:var(--stl-gutter, 200px); white-space:normal; }
